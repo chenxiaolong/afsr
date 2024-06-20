@@ -1,0 +1,22 @@
+[package]
+name = "afsr"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.79"
+bstr = "1.9.1"
+cap-std = "3.1.0"
+chrono = { version = "0.4.38", features = ["serde"] }
+clap = { version = "4.4.16", features = ["derive"] }
+num-traits = "0.2.19"
+serde = { version = "1.0.203", features = ["derive"] }
+tempfile = "3.10.1"
+toml_edit = { version = "0.22.14", features = ["serde"] }
+uuid = { version = "1.8.0", features = ["serde"] }
+
+[build-dependencies]
+bindgen = "0.69.2"
+pkg-config = "0.3.30"
