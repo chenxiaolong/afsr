@@ -240,11 +240,11 @@ pub struct UnpackCli {
     input: PathBuf,
 
     /// Output metadata file.
-    #[arg(long, value_parser, value_name = "FILE")]
+    #[arg(long, value_parser, value_name = "FILE", default_value = "fs_metadata.toml")]
     output_metadata: PathBuf,
 
     /// Output tree directory.
-    #[arg(long, value_parser, value_name = "DIR")]
+    #[arg(long, value_parser, value_name = "DIR", default_value = "fs_tree")]
     output_tree: PathBuf,
 
     /// Use a flat output directory structure.
