@@ -437,7 +437,12 @@ pub fn pack_main(cli: PackCli) -> Result<()> {
 #[derive(Debug, Parser)]
 pub struct PackCli {
     /// Input metadata file.
-    #[arg(long, value_parser, value_name = "FILE", default_value = "fs_metadata.toml")]
+    #[arg(
+        long,
+        value_parser,
+        value_name = "FILE",
+        default_value = "fs_metadata.toml"
+    )]
     input_metadata: PathBuf,
 
     /// Input tree directory.
