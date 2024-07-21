@@ -427,8 +427,8 @@ impl ExtFilesystem {
         let mut file = self.open_ro(ino)?;
 
         if let Err(e) = file.read_exact(&mut buf) {
-            return if let Some(orig) = e.get_ref().and_then(|s| s.downcast_ref::<Error>()) {
-                Err(*orig)
+            return if let Ok(orig) = e.downcast::<Error>() {
+                Err(orig)
             } else {
                 Err(Error::new(EXT2_ET_SHORT_READ.into()))
             };
