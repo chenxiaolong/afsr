@@ -134,7 +134,7 @@ fn create_image(path: &Path, fs_info: &FsInfo, size: u64, inodes: u32, verbose: 
     command.arg(size.div_ceil(u64::from(fs_info.block_size)).to_string());
 
     if let Some(time) = fs_info.creation_time {
-        command.env("E2FSPROGS_FAKE_TIME", time.timestamp().to_string());
+        command.env("E2FSPROGS_FAKE_TIME", time.as_second().to_string());
     }
 
     if verbose > 0 {

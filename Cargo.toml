@@ -9,8 +9,8 @@ edition = "2021"
 anyhow = "1.0.79"
 bstr = "1.9.1"
 cap-std = "3.1.0"
-chrono = { version = "0.4.38", features = ["serde"] }
 clap = { version = "4.4.16", features = ["derive"] }
+jiff = { version = "0.1.1", features = ["serde", "std"], default-features = false }
 num-traits = "0.2.19"
 serde = { version = "1.0.203", features = ["derive"] }
 tempfile = "3.10.1"

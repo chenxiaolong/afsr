@@ -22,7 +22,7 @@ use std::{
 };
 
 use bstr::{BStr, BString, ByteSlice};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -194,7 +194,7 @@ impl ExtFilesystem {
         unsafe {
             (*fs).now = result
                 .creation_time()
-                .map(|t| t.timestamp())
+                .map(|t| t.as_second())
                 .unwrap_or_default();
         }
 
@@ -335,7 +335,7 @@ impl ExtFilesystem {
         Some(path[..last + 1].into())
     }
 
-    pub fn creation_time(&self) -> Option<DateTime<Utc>> {
+    pub fn creation_time(&self) -> Option<Timestamp> {
         unsafe {
             let super_ = (*self.fs).super_;
             if (*super_).s_mkfs_time == 0 {
@@ -346,7 +346,7 @@ impl ExtFilesystem {
             let high = (*super_).s_mkfs_time_hi;
             let secs = (i64::from(high) << 32) | i64::from(low);
 
-            DateTime::from_timestamp(secs, 0)
+            Timestamp::new(secs, 0).ok()
         }
     }
 
@@ -527,7 +527,7 @@ impl ExtFilesystem {
         func: impl Fn(ext2_filsys, ext2_ino_t) -> errcode_t,
     ) -> Result<()> {
         let mut ret = func(self.fs, parent_ino);
-        if ret == EXT2_ET_DIR_NO_SPACE.into() {
+        if ret == errcode_t::from(EXT2_ET_DIR_NO_SPACE) {
             ret = unsafe { ext2fs_expand_dir(self.fs, parent_ino) };
             if ret != 0 {
                 return Err(Error::new(ret));
@@ -1179,7 +1179,7 @@ impl ExtMetadata {
         }
     }
 
-    fn parse_timestamp(secs: u32, extra: Option<u32>) -> DateTime<Utc> {
+    fn parse_timestamp(secs: u32, extra: Option<u32>) -> Timestamp {
         let mut secs = i64::from(secs);
         let mut nsecs = 0;
 
@@ -1189,15 +1189,15 @@ impl ExtMetadata {
         }
 
         // This inherently can't overflow because of the original u32 types.
-        DateTime::from_timestamp(secs, nsecs).unwrap()
+        Timestamp::new(secs, nsecs as i32).unwrap()
     }
 
     #[must_use]
-    fn format_timestamp(ts: DateTime<Utc>, secs: &mut u32, extra: Option<&mut u32>) -> bool {
-        let epoch_secs = ts.timestamp();
-        let nsecs = ts.timestamp_subsec_nanos();
+    fn format_timestamp(ts: Timestamp, secs: &mut u32, extra: Option<&mut u32>) -> bool {
+        let epoch_secs = ts.as_second();
+        let nsecs = ts.subsec_nanosecond();
 
-        if epoch_secs < 0 {
+        if epoch_secs < 0 || (epoch_secs == 0 && nsecs < 0) {
             // Before Unix epoch.
             return false;
         }
@@ -1209,7 +1209,7 @@ impl ExtMetadata {
         }
 
         if let Some(e) = extra {
-            *e = (nsecs << EXT4_EPOCH_BITS) | remain_secs;
+            *e = ((nsecs as u32) << EXT4_EPOCH_BITS) | remain_secs;
         } else if nsecs != 0 || remain_secs != 0 {
             // Too far into the future or too granular.
             return false;
@@ -1220,7 +1220,7 @@ impl ExtMetadata {
         true
     }
 
-    pub fn atime(&self) -> DateTime<Utc> {
+    pub fn atime(&self) -> Timestamp {
         let small = self.inode.as_ptr();
         let large = self.inode.as_ptr_large();
 
@@ -1231,7 +1231,7 @@ impl ExtMetadata {
     }
 
     #[must_use]
-    pub fn set_atime(&mut self, ts: DateTime<Utc>) -> bool {
+    pub fn set_atime(&mut self, ts: Timestamp) -> bool {
         let small = self.inode.as_mut_ptr();
         let large = self.inode.as_mut_ptr_large();
 
@@ -1242,7 +1242,7 @@ impl ExtMetadata {
         )
     }
 
-    pub fn ctime(&self) -> DateTime<Utc> {
+    pub fn ctime(&self) -> Timestamp {
         let small = self.inode.as_ptr();
         let large = self.inode.as_ptr_large();
 
@@ -1253,7 +1253,7 @@ impl ExtMetadata {
     }
 
     #[must_use]
-    pub fn set_ctime(&mut self, ts: DateTime<Utc>) -> bool {
+    pub fn set_ctime(&mut self, ts: Timestamp) -> bool {
         let small = self.inode.as_mut_ptr();
         let large = self.inode.as_mut_ptr_large();
 
@@ -1264,7 +1264,7 @@ impl ExtMetadata {
         )
     }
 
-    pub fn mtime(&self) -> DateTime<Utc> {
+    pub fn mtime(&self) -> Timestamp {
         let small = self.inode.as_ptr();
         let large = self.inode.as_ptr_large();
 
@@ -1275,7 +1275,7 @@ impl ExtMetadata {
     }
 
     #[must_use]
-    pub fn set_mtime(&mut self, ts: DateTime<Utc>) -> bool {
+    pub fn set_mtime(&mut self, ts: Timestamp) -> bool {
         let small = self.inode.as_mut_ptr();
         let large = self.inode.as_mut_ptr_large();
 
@@ -1286,7 +1286,7 @@ impl ExtMetadata {
         )
     }
 
-    pub fn crtime(&self) -> Option<DateTime<Utc>> {
+    pub fn crtime(&self) -> Option<Timestamp> {
         let large = self.inode.as_ptr_large()?;
 
         Some(Self::parse_timestamp(
@@ -1296,7 +1296,7 @@ impl ExtMetadata {
     }
 
     #[must_use]
-    pub fn set_crtime(&mut self, ts: DateTime<Utc>) -> bool {
+    pub fn set_crtime(&mut self, ts: Timestamp) -> bool {
         let Some(large) = self.inode.as_mut_ptr_large() else {
             return false;
         };

@@ -9,7 +9,7 @@ use std::{
 
 use anyhow::{bail, Context, Result};
 use bstr::{BString, ByteSlice, ByteVec};
-use chrono::{DateTime, Utc};
+use jiff::Timestamp;
 use num_traits::Zero;
 use serde::{de::Visitor, Deserialize, Serialize};
 use uuid::Uuid;
@@ -88,19 +88,19 @@ pub struct FsEntry {
 
     /// Access timestamp in Unix time.
     #[serde(default)]
-    pub atime: DateTime<Utc>,
+    pub atime: Timestamp,
 
     /// Inode change timestamp in Unix time.
     #[serde(default)]
-    pub ctime: DateTime<Utc>,
+    pub ctime: Timestamp,
 
     /// Modification timestamp in Unix time.
     #[serde(default)]
-    pub mtime: DateTime<Utc>,
+    pub mtime: Timestamp,
 
     /// Creation timestamp in Unix time.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub crtime: Option<DateTime<Utc>>,
+    pub crtime: Option<Timestamp>,
 
     /// Major ID (class of device) represented by this entry. This is only
     /// relevant for [`ExtFileType::CharDevice`] and
@@ -198,7 +198,7 @@ pub struct FsInfo {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_mounted_on: Option<AlmostUtf8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub creation_time: Option<DateTime<Utc>>,
+    pub creation_time: Option<Timestamp>,
     pub entries: Vec<FsEntry>,
 }
 
