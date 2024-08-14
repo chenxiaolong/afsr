@@ -22,6 +22,7 @@ afsr is intended for modifying Android ext4 filesystems, but should work with ar
 
 * Filesystems are always packed with `EXT2_FLAG_SHARE_DUP`, which deduplicates identical blocks and makes the resulting filesystem read-only.
 * Hardlinks are not handled specially. They are treated as independent files both during unpacking and packing. However, during packing, `EXT2_FLAG_SHARE_DUP` will at least prevent data duplication.
+* Packed filesystems are always deterministic, but are currently only bit-for-bit reproducible when created on the same platform. For example, the same filesystem packed on Linux and on Windows will have a few single-byte differences.
 
 ## Building from source
 

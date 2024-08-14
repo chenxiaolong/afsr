@@ -1,0 +1,3 @@
+[submodule "external/e2fsprogs"]
+	path = external/e2fsprogs
+	url = https://android.googlesource.com/platform/external/e2fsprogs

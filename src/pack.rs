@@ -73,11 +73,28 @@ fn is_valid_mke2fs_feature(feature: &str) -> bool {
     feature != "orphan_file" && feature != "shared_blocks"
 }
 
+#[cfg(not(feature = "static"))]
+fn mke2fs_command() -> Command {
+    Command::new("mke2fs")
+}
+
+#[cfg(feature = "static")]
+fn mke2fs_command() -> Command {
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    let argv0 = "/proc/self/exe";
+    #[cfg(not(any(target_os = "linux", target_os = "android")))]
+    let argv0 = std::env::args_os().next().unwrap();
+
+    let mut command = Command::new(argv0);
+    command.arg("mke2fs");
+    command
+}
+
 /// Create a blank image with the options from `fs_info`. This calls the
 /// external mke2fs command because there are no library functions for creating
 /// a filesystem.
 fn create_image(path: &Path, fs_info: &FsInfo, size: u64, inodes: u32, verbose: u8) -> Result<()> {
-    let mut command = Command::new("mke2fs");
+    let mut command = mke2fs_command();
 
     if verbose == 0 {
         command.arg("-q");
