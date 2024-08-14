@@ -8,7 +8,7 @@ When packing, the ext filesystem image is created bit-for-bit reproducibly, with
 
 afsr is intended for modifying Android ext4 filesystems, but should work with arbitrary ext filesystems.
 
-**Please note that afsr is a personal project.** There are no backwards compatibility guarantees and I only intend to support filesystems used in the Android devices I own. If you depend on afsr, please consider pinning to a specific commit. I currently have no plans to provide prebuilt binaries.
+**Please note that afsr is a personal project.** I only intend to support filesystems used in the Android devices I own. If you depend on afsr, please consider pinning to a specific version.
 
 ## Features
 
@@ -181,6 +181,10 @@ Note that while AOSP's tools and afsr both build reproducible images, the output
 * The file write patterns are different so the lifetime writes field in the ext superblock (`s_kbytes_written`) will have a different value.
 * For symlinks with a long target path, afsr allocates the inode before the data block that stores the target path. e2fsdroid follows upstream e2fsprogs behavior and does the reverse.
 * afsr always allocates an entry's inode once and attempts to link it a second time if `EXT2_ET_DIR_NO_SPACE` is encountered and a directory needs to be expanded. e2fsdroid follows the upstream e2fsprogs behavior and may retry the whole process (including inode allocation) when a directory runs out of space.
+
+## Verifying digital signatures
+
+To verify the digital signatures of the downloads, follow [the steps here](https://github.com/chenxiaolong/chenxiaolong/blob/master/VERIFY_SSH_SIGNATURES.md).
 
 ## License
 

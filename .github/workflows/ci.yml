@@ -1,0 +1,120 @@
+---
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+jobs:
+  build:
+    name: Build afsr
+    runs-on: ${{ matrix.artifact.os }}
+    env:
+      CARGO_TERM_COLOR: always
+      # https://github.com/rust-lang/rust/issues/78210
+      RUSTFLAGS: -C strip=symbols -C target-feature=+crt-static
+      TARGETS: ${{ join(matrix.artifact.targets, ' ') || matrix.artifact.name }}
+      ANDROID_API: ${{ matrix.artifact.android_api }}
+    strategy:
+      fail-fast: false
+      matrix:
+        artifact:
+          - os: ubuntu-latest
+            name: x86_64-unknown-linux-gnu
+          - os: windows-latest
+            name: x86_64-pc-windows-gnu
+          - os: macos-latest
+            name: universal-apple-darwin
+            targets:
+              - aarch64-apple-darwin
+              - x86_64-apple-darwin
+            combine: lipo
+          # ubuntu-latest is not 24.04 yet and 22.04's qemu-user-static segfaults.
+          - os: ubuntu-24.04
+            name: aarch64-linux-android31
+            targets:
+              - aarch64-linux-android
+            android_api: '31'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          # For git describe
+          fetch-depth: 0
+
+      - name: Install cargo-android
+        shell: bash
+        run: |
+          cargo install \
+              --git https://github.com/chenxiaolong/cargo-android \
+              --tag v0.1.2
+
+      - name: Get version
+        id: get_version
+        shell: bash
+        run: |
+          echo -n 'version=' >> "${GITHUB_OUTPUT}"
+          git describe --always \
+              | sed -E "s/^v//g;s/([^-]*-g)/r\1/;s/-/./g" \
+              >> "${GITHUB_OUTPUT}"
+
+      - name: Install toolchains
+        shell: bash
+        run: |
+          for target in ${TARGETS}; do
+              rustup target add "${target}"
+          done
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Clippy
+        shell: bash
+        run: |
+          for target in ${TARGETS}; do
+              cargo android \
+                  clippy --release --features static \
+                  --target "${target}"
+          done
+
+      - name: Formatting
+        run: cargo fmt -- --check
+
+      - name: Build
+        shell: bash
+        run: |
+          for target in ${TARGETS}; do
+              cargo android \
+                  build --release --features static \
+                  --target "${target}"
+          done
+
+      - name: Create output directory
+        shell: bash
+        run: |
+          rm -rf target/output
+
+          case "${{ matrix.artifact.combine }}" in
+          lipo)
+              mkdir target/output
+              cmd=(lipo -output target/output/afsr -create)
+              for target in ${TARGETS}; do
+                  cmd+=("target/${target}/release/afsr")
+              done
+              "${cmd[@]}"
+              ;;
+          '')
+              ln -s "${TARGETS}/release" target/output
+              ;;
+          *)
+              echo >&2 "Unsupported combine argument"
+              exit 1
+              ;;
+          esac
+
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: afsr-${{ steps.get_version.outputs.version }}-${{ matrix.artifact.name }}
+          path: |
+            target/output/afsr
+            target/output/afsr.exe
