@@ -10,7 +10,7 @@
 use std::{
     alloc::{self, Layout},
     error,
-    ffi::{CStr, CString},
+    ffi::{c_char, CStr, CString},
     fmt::{self, Octal},
     io::{self, Read, Seek, Write},
     marker::PhantomData,
@@ -143,7 +143,7 @@ fn path_cstring(path: &Path) -> Result<CString> {
     // e2fsprogs does not support UTF-16.
     let s = path
         .to_str()
-        .ok_or_else(|| Error::new(EXT2_ET_BAD_DEVICE_NAME))?
+        .ok_or_else(|| Error::new(crate::bindings::EXT2_ET_BAD_DEVICE_NAME as errcode_t))?
         .to_owned();
     // Embedded null bytes are not possible.
     let cstr = CString::new(s).unwrap();
@@ -245,7 +245,7 @@ impl ExtFilesystem {
 
                     if mask & shifted != 0 {
                         // Same buffer size as e2p_feature2string().
-                        let mut buf = [0i8; 20];
+                        let mut buf = [0 as c_char; 20];
 
                         e2p_feature_to_string(
                             compat_type as i32,
@@ -357,7 +357,7 @@ impl ExtFilesystem {
 
     pub fn find(&self, cwd: ext2_ino_t, path: &BStr) -> Result<ext2_ino_t> {
         let c_path = CString::new(path.to_owned())
-            .map_err(|_| Error::new(EXT2_ET_INVALID_ARGUMENT.into()))?;
+            .map_err(|_| Error::new(EXT2_ET_INVALID_ARGUMENT as errcode_t))?;
 
         let mut ino = 0;
         let ret =
@@ -376,7 +376,7 @@ impl ExtFilesystem {
             dirent: *mut ext2_dir_entry,
             _offset: i32,
             _blocksize: i32,
-            _buf: *mut i8,
+            _buf: *mut c_char,
             private: *mut c_void,
         ) -> i32 {
             unsafe {
@@ -419,7 +419,7 @@ impl ExtFilesystem {
         if let Some(target) = metadata.fast_symlink() {
             return Ok(target);
         } else if metadata.file_type() != ExtFileType::Symlink {
-            return Err(Error::new(EXT2_ET_INVALID_ARGUMENT.into()));
+            return Err(Error::new(EXT2_ET_INVALID_ARGUMENT as errcode_t));
         }
 
         let len = metadata.size() as usize;
@@ -430,7 +430,7 @@ impl ExtFilesystem {
             return if let Ok(orig) = e.downcast::<Error>() {
                 Err(orig)
             } else {
-                Err(Error::new(EXT2_ET_SHORT_READ.into()))
+                Err(Error::new(EXT2_ET_SHORT_READ as errcode_t))
             };
         }
 
@@ -444,7 +444,7 @@ impl ExtFilesystem {
             let inode_size = (*(*self.fs).super_).s_inode_size;
             let os = (*(*self.fs).super_).s_creator_os;
             let inode = ExtInode::new(inode_size.into())
-                .ok_or_else(|| Error::new(EXT2_ET_CORRUPT_SUPERBLOCK.into()))?;
+                .ok_or_else(|| Error::new(EXT2_ET_CORRUPT_SUPERBLOCK as errcode_t))?;
 
             Ok(ExtMetadata::new(inode, os))
         }
@@ -527,7 +527,7 @@ impl ExtFilesystem {
         func: impl Fn(ext2_filsys, ext2_ino_t) -> errcode_t,
     ) -> Result<()> {
         let mut ret = func(self.fs, parent_ino);
-        if ret == errcode_t::from(EXT2_ET_DIR_NO_SPACE) {
+        if ret == EXT2_ET_DIR_NO_SPACE as errcode_t {
             ret = unsafe { ext2fs_expand_dir(self.fs, parent_ino) };
             if ret != 0 {
                 return Err(Error::new(ret));
@@ -544,7 +544,7 @@ impl ExtFilesystem {
 
     pub fn create_directory(&mut self, parent_ino: ext2_ino_t, name: &BStr) -> Result<ext2_ino_t> {
         let c_name = CString::new(name.to_owned())
-            .map_err(|_| Error::new(EXT2_ET_INVALID_ARGUMENT.into()))?;
+            .map_err(|_| Error::new(EXT2_ET_INVALID_ARGUMENT as errcode_t))?;
 
         let ino = self.new_inode(parent_ino, ExtFileType::Directory)?;
 
@@ -562,9 +562,9 @@ impl ExtFilesystem {
         target: &BStr,
     ) -> Result<ext2_ino_t> {
         let c_name = CString::new(name.to_owned())
-            .map_err(|_| Error::new(EXT2_ET_INVALID_ARGUMENT.into()))?;
+            .map_err(|_| Error::new(EXT2_ET_INVALID_ARGUMENT as errcode_t))?;
         let c_target = CString::new(target.to_owned())
-            .map_err(|_| Error::new(EXT2_ET_INVALID_ARGUMENT.into()))?;
+            .map_err(|_| Error::new(EXT2_ET_INVALID_ARGUMENT as errcode_t))?;
 
         let ino = self.new_inode(parent_ino, ExtFileType::Symlink)?;
 
@@ -582,7 +582,7 @@ impl ExtFilesystem {
         file_type: ExtFileType,
     ) -> Result<ext2_ino_t> {
         let c_name = CString::new(name.to_owned())
-            .map_err(|_| Error::new(EXT2_ET_INVALID_ARGUMENT.into()))?;
+            .map_err(|_| Error::new(EXT2_ET_INVALID_ARGUMENT as errcode_t))?;
 
         let ino = self.new_inode(parent_ino, file_type)?;
 
@@ -848,7 +848,7 @@ impl<'a> ExtXattrs<'a> {
 
     fn check_writable(&self) -> Result<()> {
         if self.read_only {
-            return Err(Error::new(EXT2_ET_FILE_RO.into()));
+            return Err(Error::new(EXT2_ET_FILE_RO as errcode_t));
         }
 
         Ok(())
@@ -877,8 +877,8 @@ impl<'a> ExtXattrs<'a> {
         // has XATTR_HANDLE_FLAG_RAW semantics, which we want to avoid.
 
         extern "C" fn process_xattr(
-            name: *mut i8,
-            _value: *mut i8,
+            name: *mut c_char,
+            _value: *mut c_char,
             _value_len: usize,
             data: *mut c_void,
         ) -> i32 {
@@ -909,7 +909,7 @@ impl<'a> ExtXattrs<'a> {
 
     pub fn get(&self, name: &BStr) -> Result<BString> {
         let c_name = CString::new(name.to_owned())
-            .map_err(|_| Error::new(EXT2_ET_INVALID_ARGUMENT.into()))?;
+            .map_err(|_| Error::new(EXT2_ET_INVALID_ARGUMENT as errcode_t))?;
         let mut value = ptr::null_mut();
         let mut value_size = 0;
 
@@ -932,7 +932,7 @@ impl<'a> ExtXattrs<'a> {
         self.check_writable()?;
 
         let c_name = CString::new(name.to_owned())
-            .map_err(|_| Error::new(EXT2_ET_INVALID_ARGUMENT.into()))?;
+            .map_err(|_| Error::new(EXT2_ET_INVALID_ARGUMENT as errcode_t))?;
 
         let ret = unsafe {
             ext2fs_xattr_set(
