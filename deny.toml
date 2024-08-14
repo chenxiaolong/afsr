@@ -1,0 +1,46 @@
+[advisories]
+version = 2
+yanked = "deny"
+
+[licenses]
+version = 2
+include-dev = true
+allow = [
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-3-Clause",
+    "GPL-2.0",
+    "ISC",
+    "MIT",
+    "Unicode-DFS-2016",
+]
+
+# Although afsr itself is GPL-2.0-or-later, the inclusion of e2fsprogs
+# effectively makes the binary output GPL-2.0-only. Thus, we cannot include any
+# Apache-2.0-only dependencies, since that license is incompatible with GPL-2.0.
+#
+# However, this does not apply to dependencies used only in `build.rs` since the
+# build script does not link any GPL-2.0-only dependencies. If, for whatever
+# reason, the compiled object files of the build script need to be distributed,
+# they can be distributed under GPL-3.0.
+[[licenses.exceptions]]
+allow = ["Apache-2.0"]
+name = "clang-sys"
+
+[bans]
+multiple-versions = "warn"
+multiple-versions-include-dev = true
+deny = [
+    # https://github.com/serde-rs/serde/issues/2538
+    { name = "serde_derive", version = ">=1.0.172,<1.0.184" },
+]
+
+[bans.build]
+executables = "deny"
+include-dependencies = true
+bypass = [
+    { name = "libloading", allow-globs = ["tests/nagisa*.dll"] },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
