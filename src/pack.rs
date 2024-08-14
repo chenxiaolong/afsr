@@ -226,7 +226,16 @@ fn populate_image(path: &Path, fs_info: &FsInfo, tree: &Dir, verbose: u8) -> Res
                     .with_context(|| format!("Failed to open file: {:?}", HostPath(&disk_path)))?;
                 let size = reader
                     .metadata()
-                    .map(|m| m.size())
+                    .map(|m| {
+                        #[cfg(unix)]
+                        {
+                            m.size()
+                        }
+                        #[cfg(windows)]
+                        {
+                            m.file_size()
+                        }
+                    })
                     .with_context(|| format!("Failed to stat file: {:?}", HostPath(&disk_path)))?;
 
                 let ino = fs

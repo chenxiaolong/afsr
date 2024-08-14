@@ -10,6 +10,7 @@ dependencies = [
  "bindgen",
  "bstr",
  "cap-std",
+ "cc",
  "clap",
  "jiff",
  "num-traits",
@@ -163,6 +164,16 @@ dependencies = [
  "io-extras",
  "io-lifetimes",
  "rustix",
+]
+
+[[package]]
+name = "cc"
+version = "1.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e9e8aabfac534be767c909e0690571677d49f41bd8465ae876fe043d52ba5292"
+dependencies = [
+ "jobserver",
+ "libc",
 ]
 
 [[package]]
@@ -363,6 +374,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52113e019082508e868f92202f6e55c690c69990b17c350db01813cdf1dc1b19"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "jobserver"
+version = "0.1.32"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "48d1dbcbbeb6a7fec7e059840aa538bd62aaccf972c7346c4d9d2059312853d0"
+dependencies = [
+ "libc",
 ]
 
 [[package]]
