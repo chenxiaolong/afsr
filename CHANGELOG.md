@@ -9,8 +9,10 @@
 
 ### Unreleased
 
-* Initial binary release. ([Issue #2], [PR #5])
+* Initial binary release ([Issue #2], [PR #5])
+* Update dependencies ([PR #6])
 
 <!-- Do not manually edit the lines below. Use `release-tool update-changelog` to regenerate. -->
 [Issue #2]: https://github.com/chenxiaolong/afsr/issues/2
 [PR #5]: https://github.com/chenxiaolong/afsr/pull/5
+[PR #6]: https://github.com/chenxiaolong/afsr/pull/6
