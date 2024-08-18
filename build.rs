@@ -1,5 +1,7 @@
 use std::{env, path::PathBuf};
 
+use embed_manifest::{embed_manifest, new_manifest};
+
 /// This intentionally tries to mirror Android.bp as closely as possible.
 ///
 /// Unlike non-static builds, when we create a static build, we include mke2fs
@@ -316,9 +318,20 @@ fn bind_e2fs() {
         .expect("Failed to write bindings");
 }
 
+fn add_manifest() {
+    // The default settings are sensible. The only thing we actually care about
+    // is setting the code page to UTF-8 because e2fsprogs can't accept wchar_t
+    // paths.
+    if env::var_os("CARGO_CFG_WINDOWS").is_some() {
+        embed_manifest(new_manifest("Chiller3.Afsr")).expect("Failed to embed exe manifest");
+    }
+}
+
 fn main() {
     #[cfg(feature = "static")]
     build_e2fs();
 
     bind_e2fs();
+
+    add_manifest();
 }
