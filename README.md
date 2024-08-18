@@ -184,4 +184,4 @@ Note that while AOSP's tools and afsr both build reproducible images, the output
 
 ## License
 
-afsr is licensed under GPLv3. Please see [`LICENSE`](./LICENSE) for the full license text.
+afsr's own code is licensed under GPLv2+. However, because it links e2fsprogs code, some of which is GPLv2-only, any compiled binary is effectively distributed under GPLv2. Please see [`LICENSE`](./LICENSE) for the full license text.

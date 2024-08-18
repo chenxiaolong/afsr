@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2023 Andrew Gunnerson
-// SPDX-License-Identifier: GPL-3.0-only
+// SPDX-License-Identifier: GPL-2.0-or-later
 
 //! Hack to format an integer as an octal string because toml_edit can't output
 //! octal-formatted integers and many other toml parsers can't parse it either.
