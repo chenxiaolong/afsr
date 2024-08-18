@@ -7,7 +7,7 @@
     to update the actual links at the bottom of the file.
 -->
 
-### Unreleased
+### Version 1.0.1
 
 * Fix creating filesystems on Windows when a Unicode output path is used ([Issue #7], [PR #8])
 
