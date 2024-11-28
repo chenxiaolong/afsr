@@ -2,6 +2,7 @@
 
 * Make use of Rust 1.83's newly added `io::ErrorKind`s for better error messages ([PR #10])
 * Update dependencies ([PR #11])
+* Fix new clippy 1.83 warnings ([PR #12])
 
 ### Version 1.0.1
 
@@ -19,3 +20,4 @@
 [PR #8]: https://github.com/chenxiaolong/afsr/pull/8
 [PR #10]: https://github.com/chenxiaolong/afsr/pull/10
 [PR #11]: https://github.com/chenxiaolong/afsr/pull/11
+[PR #12]: https://github.com/chenxiaolong/afsr/pull/12
