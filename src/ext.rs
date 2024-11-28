@@ -609,11 +609,8 @@ impl ExtFilesystem {
                 file_type.to_raw_ext().into(),
             )
         })
-        .map_err(|e| {
-            unsafe {
-                ext2fs_inode_alloc_stats2(self.fs, ino, -1, is_dir.into());
-            }
-            e
+        .inspect_err(|_| unsafe {
+            ext2fs_inode_alloc_stats2(self.fs, ino, -1, is_dir.into());
         })?;
 
         Ok(ino)
@@ -743,13 +740,13 @@ impl<'a> ExtFile<'a> {
     }
 }
 
-impl<'a> Drop for ExtFile<'a> {
+impl Drop for ExtFile<'_> {
     fn drop(&mut self) {
         let _ = self.close_internal();
     }
 }
 
-impl<'a> Read for ExtFile<'a> {
+impl Read for ExtFile<'_> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let len = buf.len().min(u32::MAX as usize) as u32;
         let mut n = 0u32;
@@ -763,7 +760,7 @@ impl<'a> Read for ExtFile<'a> {
     }
 }
 
-impl<'a> Write for ExtFile<'a> {
+impl Write for ExtFile<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let len = buf.len().min(u32::MAX as usize) as u32;
         let mut n = 0u32;
@@ -786,7 +783,7 @@ impl<'a> Write for ExtFile<'a> {
     }
 }
 
-impl<'a> Seek for ExtFile<'a> {
+impl Seek for ExtFile<'_> {
     fn seek(&mut self, pos: io::SeekFrom) -> io::Result<u64> {
         let (offset, whence) = match pos {
             io::SeekFrom::Start(o) => (o, EXT2_SEEK_SET),
@@ -953,7 +950,7 @@ impl<'a> ExtXattrs<'a> {
     }
 }
 
-impl<'a> Drop for ExtXattrs<'a> {
+impl Drop for ExtXattrs<'_> {
     fn drop(&mut self) {
         let _ = self.close_internal();
     }

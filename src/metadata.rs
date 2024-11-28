@@ -32,7 +32,7 @@ impl<'de> Deserialize<'de> for AlmostUtf8 {
     {
         struct EscapedStrVisitor;
 
-        impl<'de> Visitor<'de> for EscapedStrVisitor {
+        impl Visitor<'_> for EscapedStrVisitor {
             type Value = BString;
 
             fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
