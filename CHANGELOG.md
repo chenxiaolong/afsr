@@ -1,4 +1,4 @@
-### Unreleased
+### Version 1.0.2
 
 * Make use of Rust 1.83's newly added `io::ErrorKind`s for better error messages ([PR #10])
 * Update dependencies ([PR #11])
