@@ -40,10 +40,12 @@ use crate::bindings::{
     ext2fs_xattrs_close, ext2fs_xattrs_count, ext2fs_xattrs_iterate, ext2fs_xattrs_open,
     ext2fs_xattrs_read, io_manager, EXT2_DYNAMIC_REV, EXT2_ET_CANCEL_REQUESTED,
     EXT2_ET_CORRUPT_SUPERBLOCK, EXT2_ET_DIRHASH_UNSUPP, EXT2_ET_DIR_EXISTS, EXT2_ET_DIR_NO_SPACE,
-    EXT2_ET_EXTERNAL_JOURNAL_NOSUPP, EXT2_ET_FILE_EXISTS, EXT2_ET_FILE_NOT_FOUND, EXT2_ET_FILE_RO,
-    EXT2_ET_INVALID_ARGUMENT, EXT2_ET_JOURNAL_UNSUPP_VERSION, EXT2_ET_NO_MEMORY,
-    EXT2_ET_OP_NOT_SUPPORTED, EXT2_ET_RO_UNSUPP_FEATURE, EXT2_ET_SHORT_READ, EXT2_ET_SHORT_WRITE,
-    EXT2_ET_TDB_ERR_EINVAL, EXT2_ET_TDB_ERR_OOM, EXT2_ET_UNIMPLEMENTED, EXT2_ET_UNSUPP_FEATURE,
+    EXT2_ET_EA_NO_SPACE, EXT2_ET_EXTENT_NO_SPACE, EXT2_ET_EXTERNAL_JOURNAL_NOSUPP,
+    EXT2_ET_FILE_EXISTS, EXT2_ET_FILE_NOT_FOUND, EXT2_ET_FILE_RO, EXT2_ET_FILE_TOO_BIG,
+    EXT2_ET_INLINE_DATA_NO_SPACE, EXT2_ET_INVALID_ARGUMENT, EXT2_ET_JOURNAL_UNSUPP_VERSION,
+    EXT2_ET_NO_DIRECTORY, EXT2_ET_NO_MEMORY, EXT2_ET_OP_NOT_SUPPORTED, EXT2_ET_RO_FILSYS,
+    EXT2_ET_RO_UNSUPP_FEATURE, EXT2_ET_SHORT_READ, EXT2_ET_SHORT_WRITE, EXT2_ET_TDB_ERR_EINVAL,
+    EXT2_ET_TDB_ERR_OOM, EXT2_ET_TOOSMALL, EXT2_ET_UNIMPLEMENTED, EXT2_ET_UNSUPP_FEATURE,
     EXT2_FILE_WRITE, EXT2_FLAG_64BITS, EXT2_FLAG_RW, EXT2_FLAG_SHARE_DUP, EXT2_FLAG_THREADS,
     EXT2_FT_BLKDEV, EXT2_FT_CHRDEV, EXT2_FT_DIR, EXT2_FT_FIFO, EXT2_FT_REG_FILE, EXT2_FT_SOCK,
     EXT2_FT_SYMLINK, EXT2_GOOD_OLD_INODE_SIZE, EXT2_MIN_BLOCK_SIZE, EXT2_OS_HURD, EXT2_OS_LINUX,
@@ -85,12 +87,13 @@ impl From<Error> for io::Error {
     fn from(value: Error) -> Self {
         // Nightly-only error kinds are currently excluded.
         let error_kind = match value.code() as u32 {
-            // EXT2_ET_RO_FILSYS => io::ErrorKind::ReadOnlyFilesystem,
+            EXT2_ET_RO_FILSYS => io::ErrorKind::ReadOnlyFilesystem,
             EXT2_ET_SHORT_READ => io::ErrorKind::UnexpectedEof,
             EXT2_ET_SHORT_WRITE => io::ErrorKind::WriteZero,
-            // EXT2_ET_DIR_NO_SPACE | EXT2_ET_TOOSMALL | EXT2_ET_FILE_TOO_BIG => {
-            //     io::ErrorKind::FileTooLarge
-            // }
+            EXT2_ET_DIR_NO_SPACE | EXT2_ET_TOOSMALL | EXT2_ET_FILE_TOO_BIG => {
+                io::ErrorKind::FileTooLarge
+            }
+            // https://github.com/rust-lang/rust/issues/130188
             // EXT2_ET_SYMLINK_LOOP | EXT2_ET_EXTENT_CYCLE => io::ErrorKind::FilesystemLoop,
             EXT2_ET_UNSUPP_FEATURE
             | EXT2_ET_RO_UNSUPP_FEATURE
@@ -101,13 +104,13 @@ impl From<Error> for io::Error {
             | EXT2_ET_EXTERNAL_JOURNAL_NOSUPP => io::ErrorKind::Unsupported,
             EXT2_ET_NO_MEMORY | EXT2_ET_TDB_ERR_OOM => io::ErrorKind::OutOfMemory,
             EXT2_ET_INVALID_ARGUMENT | EXT2_ET_TDB_ERR_EINVAL => io::ErrorKind::InvalidInput,
-            // EXT2_ET_NO_DIRECTORY => io::ErrorKind::NotADirectory,
+            EXT2_ET_NO_DIRECTORY => io::ErrorKind::NotADirectory,
             EXT2_ET_FILE_NOT_FOUND => io::ErrorKind::NotFound,
             EXT2_ET_DIR_EXISTS | EXT2_ET_FILE_EXISTS => io::ErrorKind::AlreadyExists,
             EXT2_ET_CANCEL_REQUESTED => io::ErrorKind::Interrupted,
-            // EXT2_ET_EXTENT_NO_SPACE | EXT2_ET_EA_NO_SPACE | EXT2_ET_INLINE_DATA_NO_SPACE => {
-            //     io::ErrorKind::StorageFull
-            // }
+            EXT2_ET_EXTENT_NO_SPACE | EXT2_ET_EA_NO_SPACE | EXT2_ET_INLINE_DATA_NO_SPACE => {
+                io::ErrorKind::StorageFull
+            }
             _ => io::ErrorKind::Other,
         };
 

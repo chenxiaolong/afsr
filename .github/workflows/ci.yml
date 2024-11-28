@@ -42,6 +42,9 @@ jobs:
           fetch-depth: 0
           submodules: true
 
+      - name: Update Rust
+        run: rustup update stable
+
       - name: Install cargo-android
         shell: bash
         run: |
