@@ -11,7 +11,7 @@ allow = [
     "GPL-2.0",
     "ISC",
     "MIT",
-    "Unicode-DFS-2016",
+    "Unicode-3.0",
 ]
 
 # Although afsr itself is GPL-2.0-or-later, the inclusion of e2fsprogs
