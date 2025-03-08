@@ -1,4 +1,4 @@
-### Unreleased
+### Version 1.0.3
 
 * Update dependencies ([PR #15])
 * Fix panic when parsing nanosecond timestamp values >= 2^30 (536870912) due to incorrect mathematical order of operations ([Issue #13], [PR #16])
