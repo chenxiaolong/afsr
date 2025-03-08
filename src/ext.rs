@@ -1116,7 +1116,7 @@ impl ExtMetadata {
 
     pub fn size(&self) -> u64 {
         let small = self.inode.as_ptr();
-        unsafe { u64::from((*small).i_size) | u64::from((*small).i_size_high) << 32 }
+        unsafe { u64::from((*small).i_size) | (u64::from((*small).i_size_high) << 32) }
     }
 
     pub fn nlinks(&self) -> u16 {
@@ -1140,7 +1140,7 @@ impl ExtMetadata {
             _ => 0,
         };
 
-        u32::from(low) | u32::from(high) << 16
+        u32::from(low) | (u32::from(high) << 16)
     }
 
     pub fn set_uid(&mut self, uid: u32) {
@@ -1164,7 +1164,7 @@ impl ExtMetadata {
             _ => 0,
         };
 
-        u32::from(low) | u32::from(high) << 16
+        u32::from(low) | (u32::from(high) << 16)
     }
 
     pub fn set_gid(&mut self, gid: u32) {
@@ -1185,7 +1185,7 @@ impl ExtMetadata {
 
         if let Some(e) = extra {
             secs += i64::from(e & EXT4_EPOCH_MASK) << 32;
-            nsecs = e & EXT4_NSEC_MASK as u32 >> EXT4_EPOCH_BITS;
+            nsecs = (e & EXT4_NSEC_MASK as u32) >> EXT4_EPOCH_BITS;
         }
 
         // This inherently can't overflow because of the original u32 types.
