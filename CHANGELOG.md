@@ -1,3 +1,7 @@
+### Unreleased
+
+* Update dependencies ([PR #15])
+
 ### Version 1.0.2
 
 * Make use of Rust 1.83's newly added `io::ErrorKind`s for better error messages ([PR #10])
@@ -21,3 +25,4 @@
 [PR #10]: https://github.com/chenxiaolong/afsr/pull/10
 [PR #11]: https://github.com/chenxiaolong/afsr/pull/11
 [PR #12]: https://github.com/chenxiaolong/afsr/pull/12
+[PR #15]: https://github.com/chenxiaolong/afsr/pull/15
