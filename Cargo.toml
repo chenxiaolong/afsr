@@ -2,6 +2,8 @@
 name = "afsr"
 version = "1.0.2"
 edition = "2021"
+repository = "https://github.com/chenxiaolong/afsr"
+publish = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -10,7 +12,7 @@ anyhow = "1.0.79"
 bstr = "1.9.1"
 cap-std = "3.1.0"
 clap = { version = "4.4.16", features = ["derive"] }
-jiff = { version = "0.1.1", features = ["serde", "std"], default-features = false }
+jiff = { version = "0.2.1", features = ["serde", "std"], default-features = false }
 num-traits = "0.2.19"
 serde = { version = "1.0.203", features = ["derive"] }
 tempfile = "3.10.1"
@@ -18,7 +20,7 @@ toml_edit = { version = "0.22.14", features = ["serde"] }
 uuid = { version = "1.8.0", features = ["serde"] }
 
 [build-dependencies]
-bindgen = "0.70.0"
+bindgen = "0.71.1"
 cc = { version = "1.1.10", features = ["jobserver", "parallel"], optional = true }
 embed-manifest = "1.4.0"
 pkg-config = "0.3.30"
