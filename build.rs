@@ -8,6 +8,7 @@ use embed_manifest::{embed_manifest, new_manifest};
 /// and its dependencies.
 #[cfg(feature = "static")]
 fn build_e2fs() {
+    let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
     let target = env::var("TARGET").unwrap();
 
@@ -227,16 +228,28 @@ fn build_e2fs() {
     // building with -DCONFIG_BLKID_DEBUG.
     builder.flag_if_supported("-Wno-unused-but-set-variable");
 
+    if target_os == "linux" && target_arch == "aarch64" {
+        // [GCC] '__builtin_memcpy' reading 1024 bytes from a region of size 0
+        // in ext2fs_image_super_read(), which seems incorrect. malloc() is not
+        // called with size 0.
+        builder.flag("-Wno-stringop-overread");
+    }
+
     if target_os == "windows" {
-        // [GCC] `blocks` variable in ext2fs_get_device_size().
-        builder.flag("-Wno-maybe-uninitialized");
-        // [GCC] Truncation is intended and e2p_feature_to_string() does NULL
-        // terminate the string in that scenario.
-        builder.flag("-Wno-stringop-truncation");
-        // [GCC] Complains about %h in probe_exfat() in certain versions of
-        // mingw-w64.
-        builder.flag("-Wno-error=format");
-        builder.flag("-Wno-error=format-extra-args");
+        if target.ends_with("-gnullvm") {
+            // [clang] `lineno` variable in blkid_read_cache().
+            builder.flag("-Wno-unused-but-set-variable");
+        } else {
+            // [GCC] `blocks` variable in ext2fs_get_device_size().
+            builder.flag("-Wno-maybe-uninitialized");
+            // [GCC] Truncation is intended and e2p_feature_to_string() does NULL
+            // terminate the string in that scenario.
+            builder.flag("-Wno-stringop-truncation");
+            // [GCC] Complains about %h in probe_exfat() in certain versions of
+            // mingw-w64.
+            builder.flag("-Wno-error=format");
+            builder.flag("-Wno-error=format-extra-args");
+        }
     }
 
     builder.compile("e2fs");
@@ -294,8 +307,14 @@ fn apply_bind_args(builder: bindgen::Builder) -> bindgen::Builder {
 fn bind_e2fs() {
     println!("cargo:rerun-if-changed=wrapper.h");
 
+    // clang does not recognize gnullvm in the triple and unlike cc, bindgen
+    // does not try to work around it.
+    let target = env::var("TARGET").unwrap();
+    let target = target.strip_suffix("llvm").unwrap_or(&target);
+
     let bindings = apply_bind_args(bindgen::Builder::default())
         .header("wrapper.h")
+        .clang_arg(format!("--target={target}"))
         .clang_arg("-DNO_INLINE_FUNCS")
         .allowlist_function("mke2fs_main")
         .allowlist_function(".*_error_table")
