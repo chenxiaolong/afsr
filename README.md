@@ -199,4 +199,4 @@ To verify the digital signatures of the downloads, follow [the steps here](https
 
 ## License
 
-afsr's own code is licensed under GPLv2+. However, because it links e2fsprogs code, some of which is GPLv2-only, any compiled binary is effectively distributed under GPLv2. Please see [`LICENSE`](./LICENSE) for the full license text.
+afsr's own code is licensed under GPL-2.0-or-later. However, because it links e2fsprogs code, some of which is GPL-2.0-only, any compiled binary is effectively distributed under GPL-2.0-only. Please see [`LICENSE`](./LICENSE) for the full license text.
