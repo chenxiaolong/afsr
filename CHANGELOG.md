@@ -1,3 +1,7 @@
+### Unreleased
+
+* Update dependencies ([PR #22])
+
 ### Version 1.0.4
 
 * Add prebuilt binaries for aarch64 GNU/Linux and Windows ([PR #21])
@@ -34,3 +38,4 @@
 [PR #15]: https://github.com/chenxiaolong/afsr/pull/15
 [PR #16]: https://github.com/chenxiaolong/afsr/pull/16
 [PR #21]: https://github.com/chenxiaolong/afsr/pull/21
+[PR #22]: https://github.com/chenxiaolong/afsr/pull/22
