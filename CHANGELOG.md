@@ -1,6 +1,8 @@
 ### Unreleased
 
 * Update dependencies ([PR #22])
+* Remove support for using the system e2fsprogs library on Linux ([PR #23])
+  * All platforms will now use Android's fork of e2fsprogs.
 
 ### Version 1.0.4
 
@@ -39,3 +41,4 @@
 [PR #16]: https://github.com/chenxiaolong/afsr/pull/16
 [PR #21]: https://github.com/chenxiaolong/afsr/pull/21
 [PR #22]: https://github.com/chenxiaolong/afsr/pull/22
+[PR #23]: https://github.com/chenxiaolong/afsr/pull/23
