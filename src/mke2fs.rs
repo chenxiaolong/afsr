@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 use std::{
-    ffi::{c_char, CString, OsString},
+    ffi::{CString, OsString, c_char},
     process::ExitCode,
 };
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use clap::Parser;
 
 use crate::bindings;

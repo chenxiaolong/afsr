@@ -7,11 +7,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bstr::{BString, ByteSlice, ByteVec};
 use jiff::Timestamp;
 use num_traits::Zero;
-use serde::{de::Visitor, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::Visitor};
 use uuid::Uuid;
 
 use crate::{

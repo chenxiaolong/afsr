@@ -10,7 +10,7 @@
 use std::{
     alloc::{self, Layout},
     error,
-    ffi::{c_char, CStr, CString},
+    ffi::{CStr, CString, c_char},
     fmt::{self, Octal},
     io::{self, Read, Seek, Write},
     marker::PhantomData,
@@ -27,32 +27,32 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::bindings::{
-    add_error_table, e2p_feature_to_string, errcode_t, error_message, et_ext2_error_table,
-    ext2_dir_entry, ext2_extent_handle_t, ext2_file_t, ext2_filsys, ext2_ino_t, ext2_inode,
-    ext2_inode_large, ext2_xattr_handle, ext2fs_blocks_count, ext2fs_close_free,
-    ext2fs_dir_iterate, ext2fs_dirent_file_type, ext2fs_dirent_name_len, ext2fs_expand_dir,
-    ext2fs_extent_free, ext2fs_extent_open2, ext2fs_file_close, ext2fs_file_flush,
-    ext2fs_file_llseek, ext2fs_file_open, ext2fs_file_read, ext2fs_file_set_size2,
-    ext2fs_file_write, ext2fs_free_blocks_count, ext2fs_free_mem, ext2fs_inline_data_init,
-    ext2fs_inode_alloc_stats2, ext2fs_is_fast_symlink, ext2fs_link, ext2fs_mkdir, ext2fs_namei,
-    ext2fs_new_inode, ext2fs_open, ext2fs_r_blocks_count, ext2fs_read_bitmaps, ext2fs_read_inode2,
-    ext2fs_symlink, ext2fs_write_inode_full, ext2fs_xattr_get, ext2fs_xattr_set,
-    ext2fs_xattrs_close, ext2fs_xattrs_count, ext2fs_xattrs_iterate, ext2fs_xattrs_open,
-    ext2fs_xattrs_read, io_manager, EXT2_DYNAMIC_REV, EXT2_ET_CANCEL_REQUESTED,
-    EXT2_ET_CORRUPT_SUPERBLOCK, EXT2_ET_DIRHASH_UNSUPP, EXT2_ET_DIR_EXISTS, EXT2_ET_DIR_NO_SPACE,
-    EXT2_ET_EA_NO_SPACE, EXT2_ET_EXTENT_NO_SPACE, EXT2_ET_EXTERNAL_JOURNAL_NOSUPP,
-    EXT2_ET_FILE_EXISTS, EXT2_ET_FILE_NOT_FOUND, EXT2_ET_FILE_RO, EXT2_ET_FILE_TOO_BIG,
-    EXT2_ET_INLINE_DATA_NO_SPACE, EXT2_ET_INVALID_ARGUMENT, EXT2_ET_JOURNAL_UNSUPP_VERSION,
-    EXT2_ET_NO_DIRECTORY, EXT2_ET_NO_MEMORY, EXT2_ET_OP_NOT_SUPPORTED, EXT2_ET_RO_FILSYS,
-    EXT2_ET_RO_UNSUPP_FEATURE, EXT2_ET_SHORT_READ, EXT2_ET_SHORT_WRITE, EXT2_ET_TDB_ERR_EINVAL,
-    EXT2_ET_TDB_ERR_OOM, EXT2_ET_TOOSMALL, EXT2_ET_UNIMPLEMENTED, EXT2_ET_UNSUPP_FEATURE,
-    EXT2_FILE_WRITE, EXT2_FLAG_64BITS, EXT2_FLAG_RW, EXT2_FLAG_SHARE_DUP, EXT2_FLAG_THREADS,
-    EXT2_FT_BLKDEV, EXT2_FT_CHRDEV, EXT2_FT_DIR, EXT2_FT_FIFO, EXT2_FT_REG_FILE, EXT2_FT_SOCK,
-    EXT2_FT_SYMLINK, EXT2_GOOD_OLD_INODE_SIZE, EXT2_MIN_BLOCK_SIZE, EXT2_OS_HURD, EXT2_OS_LINUX,
-    EXT2_ROOT_INO, EXT2_SEEK_CUR, EXT2_SEEK_END, EXT2_SEEK_SET, EXT3_FEATURE_INCOMPAT_EXTENTS,
-    EXT4_EPOCH_BITS, EXT4_EPOCH_MASK, EXT4_EXTENTS_FL, EXT4_FEATURE_INCOMPAT_INLINE_DATA,
-    EXT4_INLINE_DATA_FL, EXT4_NSEC_MASK, LINUX_S_IFBLK, LINUX_S_IFCHR, LINUX_S_IFDIR,
-    LINUX_S_IFIFO, LINUX_S_IFLNK, LINUX_S_IFMT, LINUX_S_IFREG, LINUX_S_IFSOCK,
+    EXT2_DYNAMIC_REV, EXT2_ET_CANCEL_REQUESTED, EXT2_ET_CORRUPT_SUPERBLOCK, EXT2_ET_DIR_EXISTS,
+    EXT2_ET_DIR_NO_SPACE, EXT2_ET_DIRHASH_UNSUPP, EXT2_ET_EA_NO_SPACE, EXT2_ET_EXTENT_NO_SPACE,
+    EXT2_ET_EXTERNAL_JOURNAL_NOSUPP, EXT2_ET_FILE_EXISTS, EXT2_ET_FILE_NOT_FOUND, EXT2_ET_FILE_RO,
+    EXT2_ET_FILE_TOO_BIG, EXT2_ET_INLINE_DATA_NO_SPACE, EXT2_ET_INVALID_ARGUMENT,
+    EXT2_ET_JOURNAL_UNSUPP_VERSION, EXT2_ET_NO_DIRECTORY, EXT2_ET_NO_MEMORY,
+    EXT2_ET_OP_NOT_SUPPORTED, EXT2_ET_RO_FILSYS, EXT2_ET_RO_UNSUPP_FEATURE, EXT2_ET_SHORT_READ,
+    EXT2_ET_SHORT_WRITE, EXT2_ET_TDB_ERR_EINVAL, EXT2_ET_TDB_ERR_OOM, EXT2_ET_TOOSMALL,
+    EXT2_ET_UNIMPLEMENTED, EXT2_ET_UNSUPP_FEATURE, EXT2_FILE_WRITE, EXT2_FLAG_64BITS, EXT2_FLAG_RW,
+    EXT2_FLAG_SHARE_DUP, EXT2_FLAG_THREADS, EXT2_FT_BLKDEV, EXT2_FT_CHRDEV, EXT2_FT_DIR,
+    EXT2_FT_FIFO, EXT2_FT_REG_FILE, EXT2_FT_SOCK, EXT2_FT_SYMLINK, EXT2_GOOD_OLD_INODE_SIZE,
+    EXT2_MIN_BLOCK_SIZE, EXT2_OS_HURD, EXT2_OS_LINUX, EXT2_ROOT_INO, EXT2_SEEK_CUR, EXT2_SEEK_END,
+    EXT2_SEEK_SET, EXT3_FEATURE_INCOMPAT_EXTENTS, EXT4_EPOCH_BITS, EXT4_EPOCH_MASK,
+    EXT4_EXTENTS_FL, EXT4_FEATURE_INCOMPAT_INLINE_DATA, EXT4_INLINE_DATA_FL, EXT4_NSEC_MASK,
+    LINUX_S_IFBLK, LINUX_S_IFCHR, LINUX_S_IFDIR, LINUX_S_IFIFO, LINUX_S_IFLNK, LINUX_S_IFMT,
+    LINUX_S_IFREG, LINUX_S_IFSOCK, add_error_table, e2p_feature_to_string, errcode_t,
+    error_message, et_ext2_error_table, ext2_dir_entry, ext2_extent_handle_t, ext2_file_t,
+    ext2_filsys, ext2_ino_t, ext2_inode, ext2_inode_large, ext2_xattr_handle, ext2fs_blocks_count,
+    ext2fs_close_free, ext2fs_dir_iterate, ext2fs_dirent_file_type, ext2fs_dirent_name_len,
+    ext2fs_expand_dir, ext2fs_extent_free, ext2fs_extent_open2, ext2fs_file_close,
+    ext2fs_file_flush, ext2fs_file_llseek, ext2fs_file_open, ext2fs_file_read,
+    ext2fs_file_set_size2, ext2fs_file_write, ext2fs_free_blocks_count, ext2fs_free_mem,
+    ext2fs_inline_data_init, ext2fs_inode_alloc_stats2, ext2fs_is_fast_symlink, ext2fs_link,
+    ext2fs_mkdir, ext2fs_namei, ext2fs_new_inode, ext2fs_open, ext2fs_r_blocks_count,
+    ext2fs_read_bitmaps, ext2fs_read_inode2, ext2fs_symlink, ext2fs_write_inode_full,
+    ext2fs_xattr_get, ext2fs_xattr_set, ext2fs_xattrs_close, ext2fs_xattrs_count,
+    ext2fs_xattrs_iterate, ext2fs_xattrs_open, ext2fs_xattrs_read, io_manager,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -122,12 +122,12 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[cfg(unix)]
 unsafe fn platform_io_manager() -> io_manager {
-    crate::bindings::unix_io_manager
+    unsafe { crate::bindings::unix_io_manager }
 }
 
 #[cfg(windows)]
 unsafe fn platform_io_manager() -> io_manager {
-    crate::bindings::windows_io_manager
+    unsafe { crate::bindings::windows_io_manager }
 }
 
 #[cfg(unix)]
@@ -316,11 +316,7 @@ impl ExtFilesystem {
             let bytes: [u8; 16] = mem::transmute_copy(&(*(*self.fs).super_).s_hash_seed);
             let uuid = Uuid::from_bytes(bytes);
 
-            if uuid.is_nil() {
-                None
-            } else {
-                Some(uuid)
-            }
+            if uuid.is_nil() { None } else { Some(uuid) }
         }
     }
 
@@ -489,19 +485,19 @@ impl ExtFilesystem {
         Ok(())
     }
 
-    pub fn open_ro(&self, ino: ext2_ino_t) -> Result<ExtFile> {
+    pub fn open_ro(&self, ino: ext2_ino_t) -> Result<ExtFile<'_>> {
         ExtFile::new(self, ino, true)
     }
 
-    pub fn open_rw(&mut self, ino: ext2_ino_t) -> Result<ExtFile> {
+    pub fn open_rw(&mut self, ino: ext2_ino_t) -> Result<ExtFile<'_>> {
         ExtFile::new(self, ino, false)
     }
 
-    pub fn xattrs_ro(&self, ino: ext2_ino_t) -> Result<ExtXattrs> {
+    pub fn xattrs_ro(&self, ino: ext2_ino_t) -> Result<ExtXattrs<'_>> {
         ExtXattrs::new(self, ino, true)
     }
 
-    pub fn xattrs_rw(&mut self, ino: ext2_ino_t) -> Result<ExtXattrs> {
+    pub fn xattrs_rw(&mut self, ino: ext2_ino_t) -> Result<ExtXattrs<'_>> {
         ExtXattrs::new(self, ino, false)
     }
 

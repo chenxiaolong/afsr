@@ -4,7 +4,7 @@
 use core::fmt;
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bstr::{BStr, BString, ByteSlice, ByteVec};
 
 const ZEROS: [u8; 16384] = [0u8; 16384];

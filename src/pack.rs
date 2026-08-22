@@ -8,7 +8,7 @@ use std::{
     process::Command,
 };
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{Context, Result, anyhow, bail};
 use bstr::ByteSlice;
 use cap_std::{
     ambient_authority,
@@ -338,13 +338,13 @@ fn populate_image(path: &Path, fs_info: &FsInfo, tree: &Dir, verbose: u8) -> Res
                 FsPath(path)
             );
         }
-        if let Some(ts) = entry.crtime {
-            if !metadata.set_crtime(ts) {
-                bail!(
-                    "File creation timestamp out of range: {ts}: {:?}",
-                    FsPath(path)
-                );
-            }
+        if let Some(ts) = entry.crtime
+            && !metadata.set_crtime(ts)
+        {
+            bail!(
+                "File creation timestamp out of range: {ts}: {:?}",
+                FsPath(path)
+            );
         }
 
         if let ExtFileType::CharDevice | ExtFileType::BlockDevice = metadata.file_type() {

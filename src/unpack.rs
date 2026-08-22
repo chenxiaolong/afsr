@@ -7,7 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use bstr::{BStr, ByteSlice, ByteVec};
 use cap_std::{ambient_authority, fs::Dir};
 use clap::{ArgAction, Parser};
@@ -19,11 +19,11 @@ use crate::{
 };
 
 fn create_and_open_dir(dir: &Dir, child: &Path) -> Result<Dir> {
-    if let Err(e) = dir.create_dir(child) {
-        if e.kind() != io::ErrorKind::AlreadyExists {
-            return Err(e)
-                .with_context(|| format!("Failed to create {:?} in {dir:?}", HostPath(child)))?;
-        }
+    if let Err(e) = dir.create_dir(child)
+        && e.kind() != io::ErrorKind::AlreadyExists
+    {
+        return Err(e)
+            .with_context(|| format!("Failed to create {:?} in {dir:?}", HostPath(child)))?;
     }
 
     dir.open_dir(child)

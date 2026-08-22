@@ -133,8 +133,9 @@ fn build_e2fs() {
     builder.file("external/e2fsprogs/lib/ext2fs/gen_bitmap64.c");
     builder.file("external/e2fsprogs/lib/ext2fs/get_num_dirs.c");
     builder.file("external/e2fsprogs/lib/ext2fs/get_pathname.c");
-    builder.file("external/e2fsprogs/lib/ext2fs/getsize.c");
+    builder.file("external/e2fsprogs/lib/ext2fs/getenv.c");
     builder.file("external/e2fsprogs/lib/ext2fs/getsectsize.c");
+    builder.file("external/e2fsprogs/lib/ext2fs/getsize.c");
     builder.file("external/e2fsprogs/lib/ext2fs/hashmap.c");
     builder.file("external/e2fsprogs/lib/ext2fs/i_block.c");
     builder.file("external/e2fsprogs/lib/ext2fs/icount.c");
@@ -157,6 +158,7 @@ fn build_e2fs() {
     builder.file("external/e2fsprogs/lib/ext2fs/newdir.c");
     builder.file("external/e2fsprogs/lib/ext2fs/nls_utf8.c");
     builder.file("external/e2fsprogs/lib/ext2fs/openfs.c");
+    builder.file("external/e2fsprogs/lib/ext2fs/orphan.c");
     builder.file("external/e2fsprogs/lib/ext2fs/progress.c");
     builder.file("external/e2fsprogs/lib/ext2fs/punch.c");
     builder.file("external/e2fsprogs/lib/ext2fs/qcow2.c");
@@ -213,12 +215,18 @@ fn build_e2fs() {
     // AOSP also includes external/e2fsprogs/e2fsck, which isn't necessary.
     // misc
     builder.file("external/e2fsprogs/misc/create_inode.c");
+    builder.file("external/e2fsprogs/misc/create_inode_libarchive.c");
     // mke2fs
     // builder.file("external/e2fsprogs/misc/mke2fs.c");
     builder.file("external/e2fsprogs-wrappers/mke2fs/mke2fs_wrapper.c");
     builder.file("external/e2fsprogs/misc/util.c");
     builder.file("external/e2fsprogs/misc/mk_hugefiles.c");
     builder.file("external/e2fsprogs/misc/default_profile.c");
+
+    // [GCC, Clang] profile_set_default() calls strchr() on a `const char *` but
+    // assigns the return value to a `char *` that is only ever read.
+    builder.flag_if_supported("-Wno-discarded-qualifiers");
+    builder.flag_if_supported("-Wno-incompatible-pointer-types-discards-qualifiers");
 
     // [GCC] quota_write_inode() defines the last parameter as `enum quota_type`
     // in the header, but defines it as `unsigned int` in the implementation.
@@ -227,6 +235,10 @@ fn build_e2fs() {
     // [Clang] blkid_read_cache() has a `lineno` variable that is only used when
     // building with -DCONFIG_BLKID_DEBUG.
     builder.flag_if_supported("-Wno-unused-but-set-variable");
+
+    // [Clang] create_inode_libarchive.c has several functions that omit names
+    // for function parameters.
+    builder.flag_if_supported("-Wno-c23-extensions");
 
     if target_os == "linux" && target_arch == "aarch64" {
         // [GCC] '__builtin_memcpy' reading 1024 bytes from a region of size 0
@@ -242,8 +254,8 @@ fn build_e2fs() {
         } else {
             // [GCC] `blocks` variable in ext2fs_get_device_size().
             builder.flag("-Wno-maybe-uninitialized");
-            // [GCC] Truncation is intended and e2p_feature_to_string() does NULL
-            // terminate the string in that scenario.
+            // [GCC] Truncation is intended and e2p_feature_to_string() does
+            // NULL terminate the string in that scenario.
             builder.flag("-Wno-stringop-truncation");
             // [GCC] Complains about %h in probe_exfat() in certain versions of
             // mingw-w64.
