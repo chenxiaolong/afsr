@@ -3,10 +3,6 @@ use std::{env, path::PathBuf};
 use embed_manifest::{embed_manifest, new_manifest};
 
 /// This intentionally tries to mirror Android.bp as closely as possible.
-///
-/// Unlike non-static builds, when we create a static build, we include mke2fs
-/// and its dependencies.
-#[cfg(feature = "static")]
 fn build_e2fs() {
     let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
@@ -267,7 +263,6 @@ fn build_e2fs() {
     builder.compile("e2fs");
 }
 
-#[cfg(feature = "static")]
 fn apply_bind_args(builder: bindgen::Builder) -> bindgen::Builder {
     builder
         .clang_arg("-Iexternal/e2fsprogs/lib")
@@ -275,45 +270,6 @@ fn apply_bind_args(builder: bindgen::Builder) -> bindgen::Builder {
         .clang_arg("-Iexternal/e2fsprogs/lib/et")
         .clang_arg("-Iexternal/e2fsprogs/lib/ext2fs")
         .clang_arg("-Iexternal/e2fsprogs-wrappers/mke2fs")
-        .clang_arg("-DAFSR_STATIC")
-}
-
-#[cfg(not(feature = "static"))]
-fn utf8_path_str(path: &std::path::Path) -> &str {
-    let Some(s) = path.to_str() else {
-        panic!("Path is not valid UTF-8: {path:?}");
-    };
-
-    s
-}
-
-#[cfg(not(feature = "static"))]
-fn pkg_config_flags(library: &pkg_config::Library) -> impl Iterator<Item = String> + '_ {
-    let define_flags = library.defines.iter().map(|(key, value)| {
-        if let Some(v) = value {
-            format!("-D{key}={v}")
-        } else {
-            format!("-D{key}")
-        }
-    });
-    let include_flags = library
-        .include_paths
-        .iter()
-        .map(|p| format!("-I{}", utf8_path_str(p)));
-
-    define_flags.chain(include_flags)
-}
-
-#[cfg(not(feature = "static"))]
-fn apply_bind_args(builder: bindgen::Builder) -> bindgen::Builder {
-    let com_err = pkg_config::probe_library("com_err").unwrap();
-    let e2p = pkg_config::probe_library("e2p").unwrap();
-    let ext2fs = pkg_config::probe_library("ext2fs").unwrap();
-
-    builder
-        .clang_args(pkg_config_flags(&com_err))
-        .clang_args(pkg_config_flags(&e2p))
-        .clang_args(pkg_config_flags(&ext2fs))
 }
 
 fn bind_e2fs() {
@@ -359,7 +315,6 @@ fn add_manifest() {
 }
 
 fn main() {
-    #[cfg(feature = "static")]
     build_e2fs();
 
     bind_e2fs();

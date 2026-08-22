@@ -30,21 +30,13 @@ Download the latest version from the [releases page](https://github.com/chenxiao
 
 ## Building from source
 
-1. Decide whether to use the system installation of e2fsprogs or afsr's bundled copy of e2fsprogs.
+1. Make sure the Rust toolchain is installed.
 
-    The default behavior is use the system installation of e2fsprogs. This generally works well on Linux systems. With this setup, the `mke2fs` executable is required at runtime.
-
-    afsr also supports static builds where the e2fsprogs libraries and `mke2fs` are compiled into afsr itself. This is more useful on Android, Windows, or macOS systems, where e2fsprogs may not be easily installed.
-
-2. Make sure the Rust toolchain is installed.
-
-3. Build afsr from source.
+2. Build afsr from source.
 
     ```bash
     cargo build --release
     ```
-
-    To create a static build, pass in `-F static`.
 
     The output binary is written to `target/release/afsr`.
 

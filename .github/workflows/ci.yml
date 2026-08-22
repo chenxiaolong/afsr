@@ -89,7 +89,7 @@ jobs:
         run: |
           for target in ${TARGETS}; do
               cargo android \
-                  clippy --release --features static \
+                  clippy --release \
                   --target "${target}"
           done
 
@@ -101,7 +101,7 @@ jobs:
         run: |
           for target in ${TARGETS}; do
               cargo android \
-                  build --release --features static \
+                  build --release \
                   --target "${target}"
           done
 

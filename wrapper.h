@@ -2,6 +2,4 @@
 #include <e2p.h>
 #include <ext2fs.h>
 
-#ifdef AFSR_STATIC
-#  include "mke2fs_wrapper.h"
-#endif
+#include "mke2fs_wrapper.h"

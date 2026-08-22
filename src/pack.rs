@@ -73,12 +73,6 @@ fn is_valid_mke2fs_feature(feature: &str) -> bool {
     feature != "orphan_file" && feature != "shared_blocks"
 }
 
-#[cfg(not(feature = "static"))]
-fn mke2fs_command() -> Command {
-    Command::new("mke2fs")
-}
-
-#[cfg(feature = "static")]
 fn mke2fs_command() -> Command {
     #[cfg(any(target_os = "linux", target_os = "android"))]
     let argv0 = "/proc/self/exe";

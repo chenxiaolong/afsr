@@ -12,7 +12,6 @@ use crate::{pack, unpack};
 pub enum Command {
     Pack(pack::PackCli),
     Unpack(unpack::UnpackCli),
-    #[cfg(feature = "static")]
     #[command(hide = true)]
     Mke2fs(crate::mke2fs::Mke2fsCli),
 }
@@ -30,7 +29,6 @@ pub fn main() -> Result<ExitCode> {
     match cli.command {
         Command::Pack(c) => pack::pack_main(c).map(|_| ExitCode::SUCCESS),
         Command::Unpack(c) => unpack::unpack_main(c).map(|_| ExitCode::SUCCESS),
-        #[cfg(feature = "static")]
         Command::Mke2fs(c) => crate::mke2fs::mke2fs_main(c),
     }
 }

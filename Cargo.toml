@@ -21,9 +21,5 @@ uuid = { version = "1.8.0", features = ["serde"] }
 
 [build-dependencies]
 bindgen = "0.72.1"
-cc = { version = "1.1.10", features = ["jobserver", "parallel"], optional = true }
+cc = { version = "1.1.10", features = ["jobserver", "parallel"] }
 embed-manifest = "1.4.0"
-pkg-config = "0.3.30"
-
-[features]
-static = ["dep:cc"]

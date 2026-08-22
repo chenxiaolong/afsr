@@ -7,7 +7,6 @@ mod bindings;
 mod cli;
 mod ext;
 mod metadata;
-#[cfg(feature = "static")]
 mod mke2fs;
 mod octal;
 mod pack;
