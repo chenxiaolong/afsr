@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 Andrew Gunnerson
+// SPDX-FileCopyrightText: 2024-2026 Andrew Gunnerson
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 use std::{
@@ -15,7 +15,6 @@ use serde::{Deserialize, Serialize, de::Visitor};
 use uuid::Uuid;
 
 use crate::{
-    ext::ExtFileType,
     octal,
     util::{self, FsPath, HostPath},
 };
@@ -61,18 +60,45 @@ impl Serialize for AlmostUtf8 {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
+pub enum LinuxFileType {
+    Unknown(u8),
+    RegularFile,
+    Directory,
+    CharDevice,
+    BlockDevice,
+    Fifo,
+    Socket,
+    Symlink,
+}
+
+impl fmt::Display for LinuxFileType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Unknown(v) => write!(f, "unknown file type ({v})"),
+            Self::RegularFile => f.write_str("regular file"),
+            Self::Directory => f.write_str("directory"),
+            Self::CharDevice => f.write_str("character device"),
+            Self::BlockDevice => f.write_str("block device"),
+            Self::Fifo => f.write_str("FIFO"),
+            Self::Socket => f.write_str("socket"),
+            Self::Symlink => f.write_str("symlink"),
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct FsEntry {
     /// Absolute file path.
     pub path: AlmostUtf8,
 
     /// File containing entry's data. This is only relevant for
-    /// [`ExtFileType::RegularFile`].
+    /// [`LinuxFileType::RegularFile`].
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<AlmostUtf8>,
 
     /// File type portion of the `st_mode`-style mode.
-    pub file_type: ExtFileType,
+    pub file_type: LinuxFileType,
 
     /// Permissions portion of the `st_mode`-style mode.
     #[serde(default, skip_serializing_if = "Zero::is_zero", with = "octal")]
@@ -87,12 +113,12 @@ pub struct FsEntry {
     pub gid: u32,
 
     /// Access timestamp in Unix time.
-    #[serde(default)]
-    pub atime: Timestamp,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub atime: Option<Timestamp>,
 
     /// Inode change timestamp in Unix time.
-    #[serde(default)]
-    pub ctime: Timestamp,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ctime: Option<Timestamp>,
 
     /// Modification timestamp in Unix time.
     #[serde(default)]
@@ -103,18 +129,18 @@ pub struct FsEntry {
     pub crtime: Option<Timestamp>,
 
     /// Major ID (class of device) represented by this entry. This is only
-    /// relevant for [`ExtFileType::CharDevice`] and
-    /// [`ExtFileType::BlockDevice`].
+    /// relevant for [`LinuxFileType::CharDevice`] and
+    /// [`LinuxFileType::BlockDevice`].
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub device_major: Option<u32>,
 
     /// Minor ID (specific device instance) represented by this entry. This is
-    /// only relevant for [`ExtFileType::CharDevice`] and
-    /// [`ExtFileType::BlockDevice`].
+    /// only relevant for [`LinuxFileType::CharDevice`] and
+    /// [`LinuxFileType::BlockDevice`].
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub device_minor: Option<u32>,
 
-    /// Symlink target. This is only relevant for [`ExtFileType::Symlink`].
+    /// Symlink target. This is only relevant for [`LinuxFileType::Symlink`].
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub symlink_target: Option<AlmostUtf8>,
 
@@ -132,7 +158,7 @@ impl FsEntry {
 
     /// Validate all fields.
     fn validate(&self) -> Result<()> {
-        if self.source.is_some() && self.file_type != ExtFileType::RegularFile {
+        if self.source.is_some() && self.file_type != LinuxFileType::RegularFile {
             bail!(
                 "Data source can only be set for regular files: {:?}",
                 FsPath(&self.path.0)
@@ -147,7 +173,7 @@ impl FsEntry {
             );
         }
 
-        if let ExtFileType::CharDevice | ExtFileType::BlockDevice = self.file_type {
+        if let LinuxFileType::CharDevice | LinuxFileType::BlockDevice = self.file_type {
             if self.device_major.is_none() {
                 bail!("No device major ID specified: {:?}", FsPath(&self.path.0));
             } else if self.device_minor.is_none() {
@@ -168,14 +194,14 @@ impl FsEntry {
         }
 
         if self.symlink_target.is_some() {
-            if self.file_type != ExtFileType::Symlink {
+            if self.file_type != LinuxFileType::Symlink {
                 bail!(
                     "Symlink target not supported for {:?}: {:?}",
                     self.file_type,
                     FsPath(&self.path.0)
                 );
             }
-        } else if self.file_type == ExtFileType::Symlink {
+        } else if self.file_type == LinuxFileType::Symlink {
             bail!("No symlink target specified: {:?}", FsPath(&self.path.0));
         }
 
@@ -184,7 +210,7 @@ impl FsEntry {
 }
 
 #[derive(Clone, PartialEq, Eq, Deserialize, Serialize)]
-pub struct FsInfo {
+pub struct ExtFsMetadata {
     pub features: Vec<String>,
     pub block_size: u32,
     pub reserved_percentage: u8,
@@ -199,14 +225,90 @@ pub struct FsInfo {
     pub last_mounted_on: Option<AlmostUtf8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub creation_time: Option<Timestamp>,
+}
+
+impl ExtFsMetadata {
+    fn validate(&self) -> Result<()> {
+        if !self.block_size.is_power_of_two() {
+            bail!("Block size is not power of two: {}", self.block_size);
+        }
+
+        Ok(())
+    }
+
+    fn validate_entries(&self, entries: &[FsEntry]) -> Result<()> {
+        // Ensure that entries for paths implicitly created during mke2fs exist.
+        for path in ["/", "/lost+found"] {
+            if !entries.iter().any(|e| e.path.0 == path) {
+                bail!("Required entry not found: {:?}", FsPath(path));
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct ErofsFsMetadata {
+    pub features: Vec<String>,
+    pub block_size: u32,
+    pub uuid: Uuid,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub volume_name: Option<AlmostUtf8>,
+    #[serde(default)]
+    pub creation_time: Timestamp,
+}
+
+impl ErofsFsMetadata {
+    fn validate(&self) -> Result<()> {
+        if !self.block_size.is_power_of_two() {
+            bail!("Block size is not power of two: {}", self.block_size);
+        }
+
+        Ok(())
+    }
+
+    fn validate_entries(&self, entries: &[FsEntry]) -> Result<()> {
+        if !entries.iter().any(|e| e.path.0 == "/") {
+            bail!("Required entry not found: {:?}", FsPath("/"));
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum FsMetadata {
+    Ext(ExtFsMetadata),
+    Erofs(ErofsFsMetadata),
+}
+
+impl FsMetadata {
+    fn validate(&self) -> Result<()> {
+        match self {
+            Self::Ext(m) => m.validate(),
+            Self::Erofs(m) => m.validate(),
+        }
+    }
+
+    fn validate_entries(&self, entries: &[FsEntry]) -> Result<()> {
+        match self {
+            Self::Ext(m) => m.validate_entries(entries),
+            Self::Erofs(m) => m.validate_entries(entries),
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct FsInfo {
+    pub metadata: FsMetadata,
     pub entries: Vec<FsEntry>,
 }
 
 impl FsInfo {
     fn normalize_and_validate(&mut self) -> Result<()> {
-        if !self.block_size.is_power_of_two() {
-            bail!("Block size is not power of two: {}", self.block_size);
-        }
+        self.metadata.validate()?;
 
         for entry in &self.entries {
             entry.validate()?;
@@ -226,12 +328,7 @@ impl FsInfo {
             }
         }
 
-        // Ensure that entries for paths implicitly created during mke2fs exist.
-        for path in ["/", "/lost+found"] {
-            if !self.entries.iter().any(|e| e.path.0 == path) {
-                bail!("Required entry not found: {:?}", FsPath(path));
-            }
-        }
+        self.metadata.validate_entries(&self.entries)?;
 
         Ok(())
     }

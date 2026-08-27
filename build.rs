@@ -1,21 +1,42 @@
-use std::{env, path::PathBuf};
+// SPDX-FileCopyrightText: 2024-2026 Andrew Gunnerson
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+use std::{
+    env,
+    fs::File,
+    io::{BufRead, BufReader},
+    path::{Path, PathBuf},
+};
 
 use embed_manifest::{embed_manifest, new_manifest};
 
-/// This intentionally tries to mirror Android.bp as closely as possible.
-fn build_e2fs() {
-    let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap();
-    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
-    let target = env::var("TARGET").unwrap();
+struct Target {
+    arch: String,
+    os: String,
+    triple: String,
+}
 
-    if target_os == "windows" && target.ends_with("-msvc") {
-        panic!("e2fsprogs does not support MSVC");
+impl Target {
+    fn bindgen_triple(&self) -> &str {
+        // clang does not recognize gnullvm in the triple and unlike cc, bindgen
+        // does not try to work around it.
+        self.triple.strip_suffix("llvm").unwrap_or(&self.triple)
     }
+}
+
+fn definitions_e2fs() -> &'static [&'static str] {
+    &["-DNO_INLINE_FUNCS"]
+}
+
+/// This intentionally tries to mirror Android.bp as closely as possible.
+fn build_e2fs(target: &Target) {
+    println!("cargo:rerun-if-changed=external/e2fsprogs");
 
     let mut builder = cc::Build::new();
 
-    // We can't bind to inline functions.
-    builder.define("NO_INLINE_FUNCS", None);
+    for definition in definitions_e2fs() {
+        builder.flag(definition);
+    }
 
     // Use our own config.h that disables libsparse support.
     builder.include("external/e2fsprogs-wrappers/config");
@@ -28,9 +49,9 @@ fn build_e2fs() {
     builder.flag("-Wno-type-limits");
     builder.flag_if_supported("-Wno-typedef-redefinition");
     builder.flag("-Wno-unused-parameter");
-    if target_os == "macos" {
+    if target.os == "macos" {
         builder.flag("-Wno-error=deprecated-declarations");
-    } else if target_os == "windows" {
+    } else if target.os == "windows" {
         builder.include("external/e2fsprogs/include/mingw");
     }
 
@@ -173,7 +194,7 @@ fn build_e2fs() {
     builder.file("external/e2fsprogs/lib/ext2fs/valid_blk.c");
     builder.file("external/e2fsprogs/lib/ext2fs/version.c");
     builder.file("external/e2fsprogs/lib/ext2fs/test_io.c");
-    if target_os == "windows" {
+    if target.os == "windows" {
         builder.file("external/e2fsprogs/lib/ext2fs/windows_io.c");
     } else {
         builder.file("external/e2fsprogs/lib/ext2fs/unix_io.c");
@@ -236,15 +257,15 @@ fn build_e2fs() {
     // for function parameters.
     builder.flag_if_supported("-Wno-c23-extensions");
 
-    if target_os == "linux" && target_arch == "aarch64" {
+    if target.os == "linux" && target.arch == "aarch64" {
         // [GCC] '__builtin_memcpy' reading 1024 bytes from a region of size 0
         // in ext2fs_image_super_read(), which seems incorrect. malloc() is not
         // called with size 0.
         builder.flag("-Wno-stringop-overread");
     }
 
-    if target_os == "windows" {
-        if target.ends_with("-gnullvm") {
+    if target.os == "windows" {
+        if target.triple.ends_with("-gnullvm") {
             // [clang] `lineno` variable in blkid_read_cache().
             builder.flag("-Wno-unused-but-set-variable");
         } else {
@@ -263,27 +284,23 @@ fn build_e2fs() {
     builder.compile("e2fs");
 }
 
-fn apply_bind_args(builder: bindgen::Builder) -> bindgen::Builder {
-    builder
+fn bind_e2fs(target: &Target, out_dir: &Path) {
+    println!("cargo:rerun-if-changed=wrapper_e2fs.h");
+
+    let mut builder = bindgen::Builder::default();
+
+    for &definition in definitions_e2fs() {
+        builder = builder.clang_arg(definition);
+    }
+
+    let bindings = builder
+        .header("wrapper_e2fs.h")
         .clang_arg("-Iexternal/e2fsprogs/lib")
         .clang_arg("-Iexternal/e2fsprogs/lib/e2p")
         .clang_arg("-Iexternal/e2fsprogs/lib/et")
         .clang_arg("-Iexternal/e2fsprogs/lib/ext2fs")
         .clang_arg("-Iexternal/e2fsprogs-wrappers/mke2fs")
-}
-
-fn bind_e2fs() {
-    println!("cargo:rerun-if-changed=wrapper.h");
-
-    // clang does not recognize gnullvm in the triple and unlike cc, bindgen
-    // does not try to work around it.
-    let target = env::var("TARGET").unwrap();
-    let target = target.strip_suffix("llvm").unwrap_or(&target);
-
-    let bindings = apply_bind_args(bindgen::Builder::default())
-        .header("wrapper.h")
-        .clang_arg(format!("--target={target}"))
-        .clang_arg("-DNO_INLINE_FUNCS")
+        .clang_arg(format!("--target={}", target.bindgen_triple()))
         .allowlist_function("mke2fs_main")
         .allowlist_function(".*_error_table")
         .allowlist_function("e2p_.*")
@@ -295,29 +312,267 @@ fn bind_e2fs() {
         .allowlist_var(".*_io_manager")
         .allowlist_var("EXT[2-4]_.*")
         .allowlist_var("LINUX_S_.*")
+        .wrap_unsafe_ops(true)
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .generate()
         .expect("Failed to generate bindings");
 
-    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     bindings
-        .write_to_file(out_path.join("bindings.rs"))
+        .write_to_file(out_dir.join("bindings_e2fs.rs"))
         .expect("Failed to write bindings");
 }
 
-fn add_manifest() {
+/// This intentionally tries to mirror Android.bp as closely as possible.
+fn build_lz4() {
+    println!("cargo:rerun-if-changed=external/lz4");
+
+    let mut builder = cc::Build::new();
+
+    // lib/Android.bp
+    builder.flag("-Wall");
+    builder.flag("-Werror");
+
+    builder.include("external/lz4/lib");
+    builder.file("external/lz4/lib/lz4.c");
+    builder.file("external/lz4/lib/lz4hc.c");
+    builder.file("external/lz4/lib/lz4frame.c");
+    builder.file("external/lz4/lib/xxhash.c");
+
+    builder.compile("lz4");
+}
+
+fn version_erofs() -> String {
+    let mut version = String::new();
+
+    File::open("external/erofs-utils/VERSION")
+        .map(BufReader::new)
+        .and_then(|mut f| f.read_line(&mut version))
+        .expect("Failed to open erofs-utils VERSION file");
+
+    version.truncate(version.trim_end().len());
+
+    version
+}
+
+fn definitions_erofs(target: &Target, version: &str) -> Vec<String> {
+    let mut flags = vec!["-DHAVE_FALLOCATE".to_owned()];
+
+    if target.os == "linux" || target.os == "android" {
+        flags.push("-DHAVE_LINUX_TYPES_H".to_owned());
+    }
+
+    // We don't need support for file_contexts files because we supply all
+    // xattrs directly, including security.selinux.
+    // flags.push("-DHAVE_LIBSELINUX".to_owned());
+
+    // erofs-utils provides its own UUID implementation, so avoid needing
+    // another dependency.
+    // flags.push("-DHAVE_LIBUUID".to_owned());
+
+    flags.push("-DLZ4_ENABLED".to_owned());
+    flags.push("-DLZ4HC_ENABLED".to_owned());
+
+    // We don't need support for AOSP's fsconfig files because we use our own
+    // metadata format.
+    // flags.push("-DWITH_ANDROID".to_owned());
+
+    flags.push("-DHAVE_MEMRCHR".to_owned());
+
+    // Not referenced in the code.
+    // flags.push("-DHAVE_SYS_IOCTL_H".to_owned());
+
+    // We never read xattrs from the filesystem.
+    // flags.push("-DHAVE_LLISTXATTR".to_owned());
+
+    // We never read xattrs from the filesystem.
+    // flags.push("-DHAVE_LGETXATTR".to_owned());
+
+    flags.push("-D_FILE_OFFSET_BITS=64".to_owned());
+    flags.push("-DEROFS_MAX_BLOCK_SIZE=16384".to_owned());
+
+    // Only used in fsck.
+    // flags.push("-DHAVE_UTIMENSAT".to_owned());
+
+    // Not referenced in the code.
+    // flags.push("-DHAVE_UNISTD_H".to_owned());
+    // flags.push("-DHAVE_SYSCONF".to_owned());
+
+    // pthreads aren't available on Windows.
+    if target.os != "windows" {
+        flags.push("-DEROFS_MT_ENABLED".to_owned());
+
+        // [Not in AOSP]
+        flags.push("-DHAVE_PTHREAD_H".to_owned());
+    }
+
+    // We do this instead of generating a header file.
+    flags.push(format!("-DPACKAGE_VERSION=\"{version}\""));
+
+    flags
+}
+
+/// This intentionally tries to mirror Android.bp as closely as possible.
+fn build_erofs(target: &Target, version: &str) {
+    println!("cargo:rerun-if-changed=external/erofs-utils");
+
+    let mut builder = cc::Build::new();
+
+    // Android.bp
+    builder.flag("-Wall");
+    builder.flag("-Werror");
+    // builder.flag("-Wno-error=#warnings");
+    {
+        builder.flag("-Wno-empty-body");
+        builder.flag("-Wno-implicit-fallthrough");
+        builder.flag("-Wno-sign-compare");
+    }
+    builder.flag("-Wno-ignored-qualifiers");
+    builder.flag("-Wno-pointer-arith");
+    builder.flag("-Wno-unused-parameter");
+    builder.flag("-Wno-unused-function");
+
+    for definition in definitions_erofs(target, version) {
+        builder.flag(definition);
+    }
+
+    // AOSP uses e2fsprogs' lib/config.h for some reason.
+    if target.os == "windows" {
+        builder.include("external/erofs-utils-windows");
+    } else {
+        builder.include("external/e2fsprogs/lib");
+    }
+
+    builder.include("external/lz4/lib");
+
+    // liberofs
+    builder.include("external/erofs-utils/include");
+    // [Not in AOSP]
+    builder.file("external/erofs-utils/lib/base64.c");
+    // [Not in AOSP]
+    builder.file("external/erofs-utils/lib/bitops.c");
+    builder.file("external/erofs-utils/lib/blobchunk.c");
+    builder.file("external/erofs-utils/lib/block_list.c");
+    builder.file("external/erofs-utils/lib/cache.c");
+    builder.file("external/erofs-utils/lib/compress.c");
+    builder.file("external/erofs-utils/lib/compress_hints.c");
+    builder.file("external/erofs-utils/lib/compressor.c");
+    builder.file("external/erofs-utils/lib/compressor_deflate.c");
+    // builder.file("external/erofs-utils/lib/compressor_libdeflate.c");
+    builder.file("external/erofs-utils/lib/compressor_liblzma.c");
+    // builder.file("external/erofs-utils/lib/compressor_libzstd.c");
+    builder.file("external/erofs-utils/lib/compressor_lz4.c");
+    builder.file("external/erofs-utils/lib/compressor_lz4hc.c");
+    builder.file("external/erofs-utils/lib/config.c");
+    builder.file("external/erofs-utils/lib/data.c");
+    builder.file("external/erofs-utils/lib/decompress.c");
+    builder.file("external/erofs-utils/lib/dedupe.c");
+    // [Not in AOSP]
+    builder.file("external/erofs-utils/lib/dedupe_ext.c");
+    builder.file("external/erofs-utils/lib/dir.c");
+    builder.file("external/erofs-utils/lib/diskbuf.c");
+    builder.file("external/erofs-utils/lib/exclude.c");
+    builder.file("external/erofs-utils/lib/fragments.c");
+    // [Not in AOSP]
+    builder.file("external/erofs-utils/lib/global.c");
+    // [Not in AOSP]
+    builder.file("external/erofs-utils/lib/gzran.c");
+    builder.file("external/erofs-utils/lib/hashmap.c");
+    // [Not in AOSP]
+    builder.file("external/erofs-utils/lib/importer.c");
+    builder.file("external/erofs-utils/lib/inode.c");
+    builder.file("external/erofs-utils/lib/io.c");
+    builder.file("external/erofs-utils/lib/kite_deflate.c");
+    // [Not in AOSP]
+    builder.file("external/erofs-utils/lib/metabox.c");
+    builder.file("external/erofs-utils/lib/namei.c");
+    builder.file("external/erofs-utils/lib/rebuild.c");
+    builder.file("external/erofs-utils/lib/sha256.c");
+    builder.file("external/erofs-utils/lib/super.c");
+    builder.file("external/erofs-utils/lib/tar.c");
+    builder.file("external/erofs-utils/lib/uuid.c");
+    builder.file("external/erofs-utils/lib/uuid_unparse.c");
+    // [Not in AOSP]
+    builder.file("external/erofs-utils/lib/vmdk.c");
+    builder.file("external/erofs-utils/lib/workqueue.c");
+    builder.file("external/erofs-utils/lib/xattr.c");
+    builder.file("external/erofs-utils/lib/xxhash.c");
+    builder.file("external/erofs-utils/lib/zmap.c");
+
+    // builder.file("external/erofs-utils/mkfs/main.c");
+    builder.file("external/erofs-utils-wrappers/mkfs/mkfs_erofs_wrapper.c");
+
+    builder.file("external/erofs-utils/lib/linux_compat.c");
+
+    if target.os == "windows" && !target.triple.ends_with("-gnullvm") {
+        // [GCC] Compiler does not understand that erofs_mkfs_strtoull()
+        // initializes the output variable.
+        builder.flag("-Wno-maybe-uninitialized");
+    }
+
+    builder.compile("erofs");
+}
+
+fn bind_erofs(target: &Target, version: &str, out_dir: &Path) {
+    println!("cargo:rerun-if-changed=wrapper_erofs.h");
+
+    let mut builder = bindgen::Builder::default();
+
+    for definition in definitions_erofs(target, version) {
+        builder = builder.clang_arg(definition);
+    }
+
+    let bindings = builder
+        .header("wrapper_erofs.h")
+        .clang_arg("-Iexternal/erofs-utils-wrappers/mkfs")
+        .clang_arg("-Iexternal/erofs-utils/include")
+        .clang_arg(format!("--target={}", target.bindgen_triple()))
+        .allowlist_function("erofs_.*")
+        .allowlist_function("linux_.*")
+        .allowlist_function("mkfs_erofs_main")
+        .allowlist_type("erofs_.*")
+        .allowlist_var("EROFS_.*")
+        .allowlist_var("LINUX_S_.*")
+        .allowlist_var("g_sbi")
+        .wrap_unsafe_ops(true)
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
+        .generate()
+        .expect("Failed to generate bindings");
+
+    bindings
+        .write_to_file(out_dir.join("bindings_erofs.rs"))
+        .expect("Failed to write bindings");
+}
+
+fn add_manifest(target: &Target) {
     // The default settings are sensible. The only thing we actually care about
     // is setting the code page to UTF-8 because e2fsprogs can't accept wchar_t
     // paths.
-    if env::var_os("CARGO_CFG_WINDOWS").is_some() {
+    if target.os == "windows" {
         embed_manifest(new_manifest("Chiller3.Afsr")).expect("Failed to embed exe manifest");
     }
 }
 
 fn main() {
-    build_e2fs();
+    let target = Target {
+        arch: env::var("CARGO_CFG_TARGET_ARCH").unwrap(),
+        os: env::var("CARGO_CFG_TARGET_OS").unwrap(),
+        triple: env::var("TARGET").unwrap(),
+    };
 
-    bind_e2fs();
+    if target.os == "windows" && target.triple.ends_with("-msvc") {
+        panic!("MSVC is not supported");
+    }
 
-    add_manifest();
+    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+
+    build_e2fs(&target);
+    bind_e2fs(&target, &out_dir);
+
+    let version_erofs = version_erofs();
+    build_erofs(&target, &version_erofs);
+    bind_erofs(&target, &version_erofs, &out_dir);
+
+    build_lz4();
+
+    add_manifest(&target);
 }

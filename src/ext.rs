@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 Andrew Gunnerson
+// SPDX-FileCopyrightText: 2024-2026 Andrew Gunnerson
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 //! This module contains some small wrappers around the e2fsprogs library. It is
@@ -11,7 +11,7 @@ use std::{
     alloc::{self, Layout},
     error,
     ffi::{CStr, CString, c_char},
-    fmt::{self, Octal},
+    fmt,
     io::{self, Read, Seek, Write},
     marker::PhantomData,
     mem,
@@ -23,36 +23,41 @@ use std::{
 
 use bstr::{BStr, BString, ByteSlice};
 use jiff::Timestamp;
-use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::bindings::{
-    EXT2_DYNAMIC_REV, EXT2_ET_CANCEL_REQUESTED, EXT2_ET_CORRUPT_SUPERBLOCK, EXT2_ET_DIR_EXISTS,
-    EXT2_ET_DIR_NO_SPACE, EXT2_ET_DIRHASH_UNSUPP, EXT2_ET_EA_NO_SPACE, EXT2_ET_EXTENT_NO_SPACE,
-    EXT2_ET_EXTERNAL_JOURNAL_NOSUPP, EXT2_ET_FILE_EXISTS, EXT2_ET_FILE_NOT_FOUND, EXT2_ET_FILE_RO,
-    EXT2_ET_FILE_TOO_BIG, EXT2_ET_INLINE_DATA_NO_SPACE, EXT2_ET_INVALID_ARGUMENT,
-    EXT2_ET_JOURNAL_UNSUPP_VERSION, EXT2_ET_NO_DIRECTORY, EXT2_ET_NO_MEMORY,
-    EXT2_ET_OP_NOT_SUPPORTED, EXT2_ET_RO_FILSYS, EXT2_ET_RO_UNSUPP_FEATURE, EXT2_ET_SHORT_READ,
-    EXT2_ET_SHORT_WRITE, EXT2_ET_TDB_ERR_EINVAL, EXT2_ET_TDB_ERR_OOM, EXT2_ET_TOOSMALL,
-    EXT2_ET_UNIMPLEMENTED, EXT2_ET_UNSUPP_FEATURE, EXT2_FILE_WRITE, EXT2_FLAG_64BITS, EXT2_FLAG_RW,
-    EXT2_FLAG_SHARE_DUP, EXT2_FLAG_THREADS, EXT2_FT_BLKDEV, EXT2_FT_CHRDEV, EXT2_FT_DIR,
-    EXT2_FT_FIFO, EXT2_FT_REG_FILE, EXT2_FT_SOCK, EXT2_FT_SYMLINK, EXT2_GOOD_OLD_INODE_SIZE,
-    EXT2_MIN_BLOCK_SIZE, EXT2_OS_HURD, EXT2_OS_LINUX, EXT2_ROOT_INO, EXT2_SEEK_CUR, EXT2_SEEK_END,
-    EXT2_SEEK_SET, EXT3_FEATURE_INCOMPAT_EXTENTS, EXT4_EPOCH_BITS, EXT4_EPOCH_MASK,
-    EXT4_EXTENTS_FL, EXT4_FEATURE_INCOMPAT_INLINE_DATA, EXT4_INLINE_DATA_FL, EXT4_NSEC_MASK,
-    LINUX_S_IFBLK, LINUX_S_IFCHR, LINUX_S_IFDIR, LINUX_S_IFIFO, LINUX_S_IFLNK, LINUX_S_IFMT,
-    LINUX_S_IFREG, LINUX_S_IFSOCK, add_error_table, e2p_feature_to_string, errcode_t,
-    error_message, et_ext2_error_table, ext2_dir_entry, ext2_extent_handle_t, ext2_file_t,
-    ext2_filsys, ext2_ino_t, ext2_inode, ext2_inode_large, ext2_xattr_handle, ext2fs_blocks_count,
-    ext2fs_close_free, ext2fs_dir_iterate, ext2fs_dirent_file_type, ext2fs_dirent_name_len,
-    ext2fs_expand_dir, ext2fs_extent_free, ext2fs_extent_open2, ext2fs_file_close,
-    ext2fs_file_flush, ext2fs_file_llseek, ext2fs_file_open, ext2fs_file_read,
-    ext2fs_file_set_size2, ext2fs_file_write, ext2fs_free_blocks_count, ext2fs_free_mem,
-    ext2fs_inline_data_init, ext2fs_inode_alloc_stats2, ext2fs_is_fast_symlink, ext2fs_link,
-    ext2fs_mkdir, ext2fs_namei, ext2fs_new_inode, ext2fs_open, ext2fs_r_blocks_count,
-    ext2fs_read_bitmaps, ext2fs_read_inode2, ext2fs_symlink, ext2fs_write_inode_full,
-    ext2fs_xattr_get, ext2fs_xattr_set, ext2fs_xattrs_close, ext2fs_xattrs_count,
-    ext2fs_xattrs_iterate, ext2fs_xattrs_open, ext2fs_xattrs_read, io_manager,
+use crate::{
+    bindings::e2fs::{
+        EXT2_DYNAMIC_REV, EXT2_ET_BAD_DEVICE_NAME, EXT2_ET_CANCEL_REQUESTED,
+        EXT2_ET_CORRUPT_SUPERBLOCK, EXT2_ET_DIR_EXISTS, EXT2_ET_DIR_NO_SPACE,
+        EXT2_ET_DIRHASH_UNSUPP, EXT2_ET_EA_NO_SPACE, EXT2_ET_EXTENT_NO_SPACE,
+        EXT2_ET_EXTERNAL_JOURNAL_NOSUPP, EXT2_ET_FILE_EXISTS, EXT2_ET_FILE_NOT_FOUND,
+        EXT2_ET_FILE_RO, EXT2_ET_FILE_TOO_BIG, EXT2_ET_INLINE_DATA_NO_SPACE,
+        EXT2_ET_INVALID_ARGUMENT, EXT2_ET_JOURNAL_UNSUPP_VERSION, EXT2_ET_NO_DIRECTORY,
+        EXT2_ET_NO_MEMORY, EXT2_ET_OP_NOT_SUPPORTED, EXT2_ET_RO_FILSYS, EXT2_ET_RO_UNSUPP_FEATURE,
+        EXT2_ET_SHORT_READ, EXT2_ET_SHORT_WRITE, EXT2_ET_TDB_ERR_EINVAL, EXT2_ET_TDB_ERR_OOM,
+        EXT2_ET_TOOSMALL, EXT2_ET_UNIMPLEMENTED, EXT2_ET_UNSUPP_FEATURE, EXT2_FILE_WRITE,
+        EXT2_FLAG_64BITS, EXT2_FLAG_RW, EXT2_FLAG_SHARE_DUP, EXT2_FLAG_THREADS, EXT2_FT_BLKDEV,
+        EXT2_FT_CHRDEV, EXT2_FT_DIR, EXT2_FT_FIFO, EXT2_FT_REG_FILE, EXT2_FT_SOCK, EXT2_FT_SYMLINK,
+        EXT2_GOOD_OLD_INODE_SIZE, EXT2_MIN_BLOCK_SIZE, EXT2_OS_HURD, EXT2_OS_LINUX, EXT2_ROOT_INO,
+        EXT2_SEEK_CUR, EXT2_SEEK_END, EXT2_SEEK_SET, EXT3_FEATURE_INCOMPAT_EXTENTS,
+        EXT4_EPOCH_BITS, EXT4_EPOCH_MASK, EXT4_EXTENTS_FL, EXT4_FEATURE_INCOMPAT_INLINE_DATA,
+        EXT4_INLINE_DATA_FL, EXT4_NSEC_MASK, LINUX_S_IFBLK, LINUX_S_IFCHR, LINUX_S_IFDIR,
+        LINUX_S_IFIFO, LINUX_S_IFLNK, LINUX_S_IFMT, LINUX_S_IFREG, LINUX_S_IFSOCK, add_error_table,
+        e2p_feature_to_string, errcode_t, error_message, et_ext2_error_table, ext2_dir_entry,
+        ext2_extent_handle_t, ext2_file_t, ext2_filsys, ext2_ino_t, ext2_inode, ext2_inode_large,
+        ext2_xattr_handle, ext2fs_blocks_count, ext2fs_close_free, ext2fs_dir_iterate,
+        ext2fs_dirent_file_type, ext2fs_dirent_name_len, ext2fs_expand_dir, ext2fs_extent_free,
+        ext2fs_extent_open2, ext2fs_file_close, ext2fs_file_flush, ext2fs_file_llseek,
+        ext2fs_file_open, ext2fs_file_read, ext2fs_file_set_size2, ext2fs_file_write,
+        ext2fs_free_blocks_count, ext2fs_free_mem, ext2fs_inline_data_init,
+        ext2fs_inode_alloc_stats2, ext2fs_is_fast_symlink, ext2fs_link, ext2fs_mkdir, ext2fs_namei,
+        ext2fs_new_inode, ext2fs_open, ext2fs_r_blocks_count, ext2fs_read_bitmaps,
+        ext2fs_read_inode2, ext2fs_symlink, ext2fs_write_inode_full, ext2fs_xattr_get,
+        ext2fs_xattr_set, ext2fs_xattrs_close, ext2fs_xattrs_count, ext2fs_xattrs_iterate,
+        ext2fs_xattrs_open, ext2fs_xattrs_read, io_manager,
+    },
+    metadata::LinuxFileType,
+    util,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -122,36 +127,12 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[cfg(unix)]
 unsafe fn platform_io_manager() -> io_manager {
-    unsafe { crate::bindings::unix_io_manager }
+    unsafe { crate::bindings::e2fs::unix_io_manager }
 }
 
 #[cfg(windows)]
 unsafe fn platform_io_manager() -> io_manager {
-    unsafe { crate::bindings::windows_io_manager }
-}
-
-#[cfg(unix)]
-fn path_cstring(path: &Path) -> Result<CString> {
-    use std::os::unix::ffi::OsStrExt;
-
-    let bytes = path.as_os_str().as_bytes();
-    // Embedded null bytes are not possible.
-    let cstr = CString::new(bytes).unwrap();
-
-    Ok(cstr)
-}
-
-#[cfg(windows)]
-fn path_cstring(path: &Path) -> Result<CString> {
-    // e2fsprogs does not support UTF-16.
-    let s = path
-        .to_str()
-        .ok_or_else(|| Error::new(crate::bindings::EXT2_ET_BAD_DEVICE_NAME as errcode_t))?
-        .to_owned();
-    // Embedded null bytes are not possible.
-    let cstr = CString::new(s).unwrap();
-
-    Ok(cstr)
+    unsafe { crate::bindings::e2fs::windows_io_manager }
 }
 
 pub fn init() {
@@ -169,9 +150,10 @@ pub struct ExtFilesystem {
 }
 
 impl ExtFilesystem {
-    pub fn open(path: &Path, rw: bool) -> Result<Self> {
+    pub fn new(path: &Path, rw: bool) -> Result<Self> {
         let io_manager = unsafe { platform_io_manager() };
-        let cpath = path_cstring(path)?;
+        let cpath = util::path_cstring(path)
+            .ok_or_else(|| Error::new(EXT2_ET_BAD_DEVICE_NAME as errcode_t))?;
         let flags = EXT2_FLAG_64BITS
             | EXT2_FLAG_THREADS
             | if rw {
@@ -389,7 +371,7 @@ impl ExtFilesystem {
                 let result: *mut Vec<ExtDirEntry> = private.cast();
                 (*result).push(ExtDirEntry {
                     ino: (*dirent).inode,
-                    file_type: ExtFileType::from_raw_ext(file_type as u8),
+                    file_type: LinuxFileType::from_raw_ext(file_type as u8),
                     file_name: file_name.to_owned(),
                 });
             }
@@ -417,11 +399,14 @@ impl ExtFilesystem {
     pub fn read_link(&self, ino: ext2_ino_t, metadata: &ExtMetadata) -> Result<BString> {
         if let Some(target) = metadata.fast_symlink() {
             return Ok(target);
-        } else if metadata.file_type() != ExtFileType::Symlink {
+        } else if metadata.file_type() != LinuxFileType::Symlink {
             return Err(Error::new(EXT2_ET_INVALID_ARGUMENT as errcode_t));
         }
 
-        let len = metadata.size() as usize;
+        let len = metadata
+            .size()
+            .try_into()
+            .map_err(|_| Error::new(EXT2_ET_FILE_TOO_BIG as errcode_t))?;
         let mut buf = vec![0u8; len];
         let mut file = self.open_ro(ino)?;
 
@@ -501,7 +486,11 @@ impl ExtFilesystem {
         ExtXattrs::new(self, ino, false)
     }
 
-    fn new_inode(&mut self, parent_ino: ext2_ino_t, file_type: ExtFileType) -> Result<ext2_ino_t> {
+    fn new_inode(
+        &mut self,
+        parent_ino: ext2_ino_t,
+        file_type: LinuxFileType,
+    ) -> Result<ext2_ino_t> {
         let mut ino = 0;
 
         let ret = unsafe {
@@ -545,7 +534,7 @@ impl ExtFilesystem {
         let c_name = CString::new(name.to_owned())
             .map_err(|_| Error::new(EXT2_ET_INVALID_ARGUMENT as errcode_t))?;
 
-        let ino = self.new_inode(parent_ino, ExtFileType::Directory)?;
+        let ino = self.new_inode(parent_ino, LinuxFileType::Directory)?;
 
         self.retry_dir_no_space(parent_ino, |fs, parent_ino| unsafe {
             ext2fs_mkdir(fs, parent_ino, ino, c_name.as_ptr())
@@ -565,7 +554,7 @@ impl ExtFilesystem {
         let c_target = CString::new(target.to_owned())
             .map_err(|_| Error::new(EXT2_ET_INVALID_ARGUMENT as errcode_t))?;
 
-        let ino = self.new_inode(parent_ino, ExtFileType::Symlink)?;
+        let ino = self.new_inode(parent_ino, LinuxFileType::Symlink)?;
 
         self.retry_dir_no_space(parent_ino, |fs, parent_ino| unsafe {
             ext2fs_symlink(fs, parent_ino, ino, c_name.as_ptr(), c_target.as_ptr())
@@ -578,7 +567,7 @@ impl ExtFilesystem {
         &mut self,
         parent_ino: ext2_ino_t,
         name: &BStr,
-        file_type: ExtFileType,
+        file_type: LinuxFileType,
     ) -> Result<ext2_ino_t> {
         let c_name = CString::new(name.to_owned())
             .map_err(|_| Error::new(EXT2_ET_INVALID_ARGUMENT as errcode_t))?;
@@ -591,7 +580,7 @@ impl ExtFilesystem {
 
         self.set_metadata(ino, &metadata)?;
 
-        let is_dir = file_type == ExtFileType::Directory;
+        let is_dir = file_type == LinuxFileType::Directory;
         unsafe {
             ext2fs_inode_alloc_stats2(self.fs, ino, 1, is_dir.into());
         }
@@ -617,7 +606,7 @@ impl ExtFilesystem {
         parent_ino: ext2_ino_t,
         name: &BStr,
     ) -> Result<ext2_ino_t> {
-        let ino = self.create_empty_inode(parent_ino, name, ExtFileType::RegularFile)?;
+        let ino = self.create_empty_inode(parent_ino, name, LinuxFileType::RegularFile)?;
 
         let mut metadata = self.metadata(ino)?;
 
@@ -1044,14 +1033,6 @@ impl Drop for ExtInode {
     }
 }
 
-struct OctalDebug<O: Octal>(O);
-
-impl<O: Octal> fmt::Debug for OctalDebug<O> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
 #[derive(Clone)]
 pub struct ExtMetadata {
     inode: ExtInode,
@@ -1062,7 +1043,7 @@ impl fmt::Debug for ExtMetadata {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ExtMetadata")
             .field("file_type", &self.file_type())
-            .field("perms", &OctalDebug(self.perms()))
+            .field("perms", &format_args!("{:o}", self.perms()))
             .field("size", &self.size())
             .field("nlinks", &self.nlinks())
             .field("uid", &self.uid())
@@ -1082,13 +1063,13 @@ impl ExtMetadata {
         Self { inode, os }
     }
 
-    pub fn file_type(&self) -> ExtFileType {
+    pub fn file_type(&self) -> LinuxFileType {
         let small = self.inode.as_ptr();
         let mode = unsafe { (*small).i_mode };
-        ExtFileType::from_raw_linux(mode)
+        LinuxFileType::from_raw_linux(mode)
     }
 
-    fn set_file_type(&mut self, file_type: ExtFileType) {
+    fn set_file_type(&mut self, file_type: LinuxFileType) {
         let small = self.inode.as_mut_ptr();
         let mask = LINUX_S_IFMT as u16;
         unsafe {
@@ -1307,7 +1288,7 @@ impl ExtMetadata {
     // 2 bytes, while the new ext encoding uses all 4 bytes.
 
     pub fn device(&self) -> Option<(u32, u32)> {
-        let (ExtFileType::BlockDevice | ExtFileType::CharDevice) = self.file_type() else {
+        let (LinuxFileType::BlockDevice | LinuxFileType::CharDevice) = self.file_type() else {
             return None;
         };
 
@@ -1329,7 +1310,7 @@ impl ExtMetadata {
 
     #[must_use]
     pub fn set_device(&mut self, major: u32, minor: u32) -> bool {
-        let (ExtFileType::BlockDevice | ExtFileType::CharDevice) = self.file_type() else {
+        let (LinuxFileType::BlockDevice | LinuxFileType::CharDevice) = self.file_type() else {
             return false;
         };
 
@@ -1350,7 +1331,7 @@ impl ExtMetadata {
     }
 
     pub fn fast_symlink(&self) -> Option<BString> {
-        if self.file_type() != ExtFileType::Symlink
+        if self.file_type() != LinuxFileType::Symlink
             || unsafe { ext2fs_is_fast_symlink(self.inode.as_ptr().cast_mut()) } == 0
         {
             return None;
@@ -1371,20 +1352,18 @@ impl ExtMetadata {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
-pub enum ExtFileType {
-    Unknown(u8),
-    RegularFile,
-    Directory,
-    CharDevice,
-    BlockDevice,
-    Fifo,
-    Socket,
-    Symlink,
+trait LinuxFileTypeExt {
+    fn from_raw_ext(value: u8) -> Self;
+
+    fn to_raw_ext(self) -> u8;
+
+    fn from_raw_linux(value: u16) -> Self;
+
+    fn to_raw_linux(self) -> u16;
 }
 
-impl ExtFileType {
-    pub fn from_raw_ext(value: u8) -> Self {
+impl LinuxFileTypeExt for LinuxFileType {
+    fn from_raw_ext(value: u8) -> Self {
         match u32::from(value) {
             EXT2_FT_REG_FILE => Self::RegularFile,
             EXT2_FT_DIR => Self::Directory,
@@ -1397,7 +1376,7 @@ impl ExtFileType {
         }
     }
 
-    pub fn to_raw_ext(self) -> u8 {
+    fn to_raw_ext(self) -> u8 {
         match self {
             Self::Unknown(v) => v,
             Self::RegularFile => EXT2_FT_REG_FILE as u8,
@@ -1410,7 +1389,7 @@ impl ExtFileType {
         }
     }
 
-    pub fn from_raw_linux(value: u16) -> Self {
+    fn from_raw_linux(value: u16) -> Self {
         match u32::from(value) & LINUX_S_IFMT {
             LINUX_S_IFREG => Self::RegularFile,
             LINUX_S_IFDIR => Self::Directory,
@@ -1423,7 +1402,7 @@ impl ExtFileType {
         }
     }
 
-    pub fn to_raw_linux(self) -> u16 {
+    fn to_raw_linux(self) -> u16 {
         match self {
             Self::Unknown(v) => u16::from(v) << 12,
             Self::RegularFile => LINUX_S_IFREG as u16,
@@ -1437,24 +1416,9 @@ impl ExtFileType {
     }
 }
 
-impl fmt::Display for ExtFileType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Unknown(v) => write!(f, "unknown file type ({v})"),
-            Self::RegularFile => f.write_str("regular file"),
-            Self::Directory => f.write_str("directory"),
-            Self::CharDevice => f.write_str("character device"),
-            Self::BlockDevice => f.write_str("block device"),
-            Self::Fifo => f.write_str("FIFO"),
-            Self::Socket => f.write_str("socket"),
-            Self::Symlink => f.write_str("symlink"),
-        }
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExtDirEntry {
     pub ino: ext2_ino_t,
-    pub file_type: ExtFileType,
+    pub file_type: LinuxFileType,
     pub file_name: BString,
 }

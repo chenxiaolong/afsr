@@ -1,17 +1,18 @@
-// SPDX-FileCopyrightText: 2024 Andrew Gunnerson
+// SPDX-FileCopyrightText: 2024-2026 Andrew Gunnerson
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 use std::process::ExitCode;
 
 mod bindings;
 mod cli;
+mod erofs;
 mod ext;
 mod metadata;
-mod mke2fs;
 mod octal;
 mod pack;
 mod unpack;
 mod util;
+mod wrappers;
 
 fn main() -> ExitCode {
     ext::init();

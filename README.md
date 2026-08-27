@@ -2,27 +2,29 @@
 
 afsr (**A**ndroid **f**ile**s**ystem **r**epack) is a simple tool for unpacking and packing Android filesystems.
 
-When unpacking, file contents are stored in a directory tree while file metadata is stored in a TOML file. This makes it possible to losslessly unpack filesystems even when the host system doesn't support ext filesystem features (eg. Unix permission bits or xattrs).
+When unpacking, file contents are stored in a directory tree while file metadata is stored in a TOML file. This makes it possible to losslessly unpack filesystems even when the host system doesn't support Linux filesystem features, like Unix permission bits or xattrs.
 
-When packing, the ext filesystem image is created bit-for-bit reproducibly, with all file metadata being populated from a TOML file. Additionally, identical blocks are deduplicated via ext's `EXT2_FLAG_SHARE_DUP` feature (which effectively renders the filesystem read-only).
+When packing, the filesystem image is created bit-for-bit reproducibly, with all file metadata being populated from a TOML file.
 
-afsr is intended for modifying Android ext4 filesystems, but should work with arbitrary ext filesystems.
+afsr is intended for modifying Android ext4 and erofs filesystems, but should work with arbitrary filesystems of these types.
 
 **Please note that afsr is a personal project.** I only intend to support filesystems used in the Android devices I own. If you depend on afsr, please consider pinning to a specific version.
 
 ## Features
 
-* Supports any system that can run e2fsprogs.
+* Supports ext(2/3/4) and erofs.
 * Does not require root (no kernel-level filesystem mounting).
 * Supports all valid filesystem paths (eg. `\n` or `\` in filenames).
   * Use `--flat` when unpacking if the host system can't represent all possible paths.
-* Supports crtime and xattrs.
+* Supports all inode metadata, including crtime and xattrs.
 
 ## Limitations
 
-* Filesystems are always packed with `EXT2_FLAG_SHARE_DUP`, which deduplicates identical blocks and makes the resulting filesystem read-only.
-* Hardlinks are not handled specially. They are treated as independent files both during unpacking and packing. However, during packing, `EXT2_FLAG_SHARE_DUP` will at least prevent data duplication.
-* Packed filesystems are always deterministic, but are currently only bit-for-bit reproducible when created on the same platform. For example, the same filesystem packed on Linux and on Windows will have a few single-byte differences.
+* ext4 filesystems are always packed with `EXT2_FLAG_SHARE_DUP`, which deduplicates identical blocks and makes the resulting filesystem read-only.
+* Hardlinks are not handled specially. They are treated as independent files both during unpacking and packing. However, for ext4 output, `EXT2_FLAG_SHARE_DUP` will at least prevent data duplication.
+* Packed ext4 filesystems are always deterministic, but are currently only bit-for-bit reproducible when created on the same platform. The same filesystem packed on Linux and on Windows will have a few single-byte differences. erofs filesystems are always fully reproducible across platforms.
+* Packed erofs filesystems may not always fully match the original filesystem. The file contents and metadata will be identical, but there is not enough information in the original image to tell `mkfs.erofs` how to create an image with the same raw data layout.
+* Packing erofs filesystems with `\n` in file paths and symlink targets is not supported due to limitations of the tar file format used as an intermediate step during packing.
 
 ## Installation
 
@@ -30,7 +32,7 @@ Download the latest version from the [releases page](https://github.com/chenxiao
 
 ## Building from source
 
-1. Make sure the Rust toolchain is installed.
+1. Make sure the Rust toolchain and gcc/clang are installed. When compiling for Windows, mingw-w64 is required.
 
 2. Build afsr from source.
 
@@ -42,14 +44,11 @@ Download the latest version from the [releases page](https://github.com/chenxiao
 
 ## Unpacking a filesystem
 
-```bash
-afsr unpack \
-    --input <filesystem image> \
-    --output-metadata <TOML file> \
-    --output-tree <directory>
+```basH
+afsr unpack -i <filesystem image>
 ```
 
-Directories and regular files are unpacked to the specified output directory. Metadata for all files is unpacked to the TOML file. Special files, such as block/character devices, FIFOs, sockets, and symlinks, only exist in the TOML file.
+Directories and regular files are unpacked to `fs_tree/`. Metadata for all files is unpacked to `fs_metadata.toml`. Special files, such as block/character devices, FIFOs, sockets, and symlinks, only exist in the TOML file. These output paths can be overridden with `--output-tree` and `--output-metadata`.
 
 By default, the files in the output directory preserve their original filenames. If the host system cannot represent a filename (eg. contains `\` and running on Windows), then the unpacking process will fail. To work around this, use `--flat`. This will name all files in the output directory after their inode numbers instead of their filenames. The TOML file will then include the mapping from the original path to the path on disk:
 
@@ -63,21 +62,30 @@ source = "1234"
 ## Packing a filesystem
 
 ```bash
-afsr pack \
-    --output <filesystem image> \
-    --input-metadata <TOML file> \
-    --input-tree <directory>
+afsr pack -o <filesystem image>
 ```
 
-When packing a filesystem, the file list comes solely from the TOML file. If a file exists in the input directory, but not the TOML file, it will be silently ignored.
+When packing a filesystem, the file list comes solely from the TOML file (`fs_metadata.toml`). If a file exists in the input directory (`fs_tree/`), but not the TOML file, it will be silently ignored. The input paths can be overridden with `--input-tree` and `--input-metadata`.
 
-Note that the entries in the TOML file must be complete. For example, if there's an entry for a file named `/foo/bar`, then there must also be an entry for a directory named `/foo`. There is no automatic directory creation. The directory entries for `/` (the filesystem root) and `/lost+found` must also exist.
+Note that the entries in the TOML file must be complete. For example, if there's an entry for a file named `/foo/bar`, then there must also be an entry for a directory named `/foo`. There is no automatic directory creation. The directory entry for `/` (the filesystem root) must also exist.
 
-When packing a filesystem, the filesystem is created twice. The first pass overestimates the image size to ensure that everything will fit. The second pass will create the smallest possible image using information computed during the first pass.
+Filesystem specific notes:
+
+* ext
+    * The directory entry for `/lost+found` must exist.
+    * The filesystem is created twice during packing. The first pass overestimates the image size to ensure that everything will fit. The second pass will create the smallest possible image using information computed during the first pass.
+* erofs
+    * The filesystem is first packed into a tarball and then the tarball is converted into the actual erofs filesystem using a bundled copy of `mkfs.erofs`.
 
 ## TOML file
 
 ```toml
+# There must be a single [metadata] section describing global metadata for the
+# filesystem type (ext or erofs).
+
+# For an ext filesystem:
+[metadata]
+type = "ext"
 # [Required] List of filesystem features. These have the same names as what
 # mke2fs' -o option accepts. Note that `shared_blocks` is always used even if it
 # is not listed.
@@ -116,6 +124,27 @@ last_mounted_on = "/"
 # timestamp more granular than one second is ignored.
 creation_time = "2009-01-01T00:00:00Z"
 
+# For an erofs filesystem:
+[metadata]
+type = "erofs"
+# [Required] List of filesystem features. These have the same names as what
+# dump.erofs shows. Due to mkfs.erofs limitations, afsr cannot guarantee which
+# features will be enabled in the output image.
+features = [
+    "sb_csum",
+    "mtime",
+    "xattr_filter",
+]
+# [Required] Filesystem block size.
+block_size = 4096
+# [Required] Filesystem UUID.
+uuid = "00000000-0000-0000-0000-000000000000"
+# [Optional] Filesystem label.
+volume_name = ""
+# [Optional] Filesystem creation timestamp in ISO8601. Any portion of the
+# timestamp more granular than one second is ignored.
+creation_time = "2009-01-01T00:00:00Z"
+
 # List of all filesystem entries.
 [[entries]]
 # [Required] File path. `/` represents the root of the filesystem. Multiple
@@ -136,18 +165,28 @@ file_mode = "755"
 uid = 0
 # [Optional] File group. If unset, 0 is used.
 gid = 0
-# [Optional] File access timestamp. This has nanosecond granularity if the inode
-# size is 256 or greater. If unset, the Unix epoch timestamp is used.
+# [Optional] File access timestamp. If unset, the Unix epoch timestamp is used.
+# - For ext: This has nanosecond granularity if the inode size is 256 or
+#   greater.
+# - For erofs: This field is not supported and is ignored.
 atime = "2009-01-01T00:00:00Z"
-# [Optional] File inode change timestamp. This has nanosecond granularity if the
-# inode size is 256 or greater. If unset, the Unix epoch timestamp is used.
+# [Optional] File inode change timestamp. If unset, the Unix epoch timestamp is
+# used.
+# - For ext: This has nanosecond granularity if the inode size is 256 or
+#   greater.
+# - For erofs: This field is not supported and is ignored.
 ctime = "2009-01-01T00:00:00Z"
-# [Optional] File modification timestamp. This has nanosecond granularity if the
-# inode size is 256 or greater. If unset, the Unix epoch timestamp is used.
+# [Optional] File modification timestamp. If unset, the Unix epoch timestamp is
+# used.
+# - For ext: This has nanosecond granularity if the inode size is 256 or
+#   greater.
+# - For erofs: This has nanosecond granularity.
 mtime = "2009-01-01T00:00:00Z"
-# [Optional] File creation timestamp. This only exists and has nanosecond
-# granularity if the inode size is 256 or greater. If unset, the Unix epoch
-# timestamp is used.
+# [Optional] File creation timestamp. If unset, the Unix epoch timestamp is
+# used.
+# - For ext: This only exists and has nanosecond granularity if the inode size
+#   is 256 or greater.
+# - For erofs: This field is not supported and is ignored.
 crtime = "2009-01-01T00:00:00Z"
 # [Optional] Device major ID (class of device). This is only relevant for block
 # and character devices.
@@ -166,9 +205,9 @@ symlink_target = "bar"
 "security.selinux" = 'u:object_r:rootfs:s0\0'
 ```
 
-## Comparison with AOSP's tools
+## Comparison with AOSP's tools for ext filesystems
 
-AOSP includes a set of tools for unpacking and packing images similar to afsr:
+AOSP includes a set of tools for unpacking and packing ext images similar to afsr:
 
 * `build/make/tools/releasetools/build_image.py`
 * `system/extras/ext4_utils/mkuserimg_mke2fs.py`

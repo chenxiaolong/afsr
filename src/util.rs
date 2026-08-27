@@ -1,8 +1,11 @@
-// SPDX-FileCopyrightText: 2023-2024 Andrew Gunnerson
+// SPDX-FileCopyrightText: 2023-2026 Andrew Gunnerson
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 use core::fmt;
-use std::path::{Path, PathBuf};
+use std::{
+    ffi::CString,
+    path::{Path, PathBuf},
+};
 
 use anyhow::{Context, Result, bail};
 use bstr::{BStr, BString, ByteSlice, ByteVec};
@@ -102,4 +105,24 @@ impl<P: AsRef<Path>> fmt::Debug for HostPath<P> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[Host]{:?}", self.0.as_ref())
     }
+}
+
+#[cfg(unix)]
+pub fn path_cstring(path: &Path) -> Option<CString> {
+    use std::os::unix::ffi::OsStrExt;
+
+    let bytes = path.as_os_str().as_bytes();
+    // Embedded null bytes are not possible.
+    let cstr = CString::new(bytes).unwrap();
+
+    Some(cstr)
+}
+
+#[cfg(windows)]
+pub fn path_cstring(path: &Path) -> Option<CString> {
+    let s = path.to_str()?.to_owned();
+    // Embedded null bytes are not possible.
+    let cstr = CString::new(s).unwrap();
+
+    Some(cstr)
 }

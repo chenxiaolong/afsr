@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 Andrew Gunnerson
+// SPDX-FileCopyrightText: 2024-2026 Andrew Gunnerson
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 use std::process::ExitCode;
@@ -6,14 +6,19 @@ use std::process::ExitCode;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 
-use crate::{pack, unpack};
+use crate::{
+    pack, unpack,
+    wrappers::{mke2fs, mkfs_erofs},
+};
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
     Pack(pack::PackCli),
     Unpack(unpack::UnpackCli),
     #[command(hide = true)]
-    Mke2fs(crate::mke2fs::Mke2fsCli),
+    Mke2fs(mke2fs::Mke2fsCli),
+    #[command(hide = true, name = "mkfs.erofs")]
+    MkfsErofs(mkfs_erofs::MkfsErofsCli),
 }
 
 #[derive(Debug, Parser)]
@@ -29,6 +34,7 @@ pub fn main() -> Result<ExitCode> {
     match cli.command {
         Command::Pack(c) => pack::pack_main(c).map(|_| ExitCode::SUCCESS),
         Command::Unpack(c) => unpack::unpack_main(c).map(|_| ExitCode::SUCCESS),
-        Command::Mke2fs(c) => crate::mke2fs::mke2fs_main(c),
+        Command::Mke2fs(c) => mke2fs::mke2fs_main(c),
+        Command::MkfsErofs(c) => mkfs_erofs::mkfs_erofs_main(c),
     }
 }
