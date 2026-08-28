@@ -7,7 +7,7 @@
     to update the actual links at the bottom of the file.
 -->
 
-### Unreleased
+### Version 2.0.0
 
 * Add support for erofs filesystems ([Issue #14], [PR #24])
   * **NOTE**: There is a breaking change to the `fs_metadata.toml` file format. The `entries` section is the same as before, but other top level keys have been moved to a filesystem-specific `metadata` section.
