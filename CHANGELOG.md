@@ -11,6 +11,7 @@
 
 * Add support for erofs filesystems ([Issue #14], [PR #24])
   * **NOTE**: There is a breaking change to the `fs_metadata.toml` file format. The `entries` section is the same as before, but other top level keys have been moved to a filesystem-specific `metadata` section.
+* Add support for tab completion of commands ([PR #26])
 * Update dependencies ([PR #22])
 * Remove support for using the system e2fsprogs library on Linux ([PR #23])
   * All platforms will now use Android's fork of e2fsprogs.
@@ -56,3 +57,4 @@
 [PR #22]: https://github.com/chenxiaolong/afsr/pull/22
 [PR #23]: https://github.com/chenxiaolong/afsr/pull/23
 [PR #24]: https://github.com/chenxiaolong/afsr/pull/24
+[PR #26]: https://github.com/chenxiaolong/afsr/pull/26
