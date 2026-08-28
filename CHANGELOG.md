@@ -1,7 +1,16 @@
+<!--
+    When adding new changelog entries, use [Issue #0] to link to issues and
+    [PR #0] to link to pull requests. Then run:
+
+        cargo xtask update-changelog
+
+    to update the actual links at the bottom of the file.
+-->
+
 ### Unreleased
 
 * Add support for erofs filesystems ([Issue #14], [PR #24])
-  * **NOTE**: There is a breaking change to the `fs_metadata.toml` file format. The `[entries]` section is the same as before, but other top level keys have been moved to a filesystem-specific `[metadata]` section.
+  * **NOTE**: There is a breaking change to the `fs_metadata.toml` file format. The `entries` section is the same as before, but other top level keys have been moved to a filesystem-specific `metadata` section.
 * Update dependencies ([PR #22])
 * Remove support for using the system e2fsprogs library on Linux ([PR #23])
   * All platforms will now use Android's fork of e2fsprogs.
@@ -30,6 +39,7 @@
 * Initial binary release ([Issue #2], [PR #5])
 * Update dependencies ([PR #6])
 
+<!-- Do not manually edit the lines below. Use `cargo xtask update-changelog` to regenerate. -->
 [Issue #2]: https://github.com/chenxiaolong/afsr/issues/2
 [Issue #7]: https://github.com/chenxiaolong/afsr/issues/7
 [Issue #13]: https://github.com/chenxiaolong/afsr/issues/13

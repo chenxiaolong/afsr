@@ -231,3 +231,5 @@ To verify the digital signatures of the downloads, follow [the steps here](https
 ## License
 
 afsr's own code is licensed under GPL-2.0-or-later. However, because it links e2fsprogs code, some of which is GPL-2.0-only, any compiled binary is effectively distributed under GPL-2.0-only. Please see [`LICENSE`](./LICENSE) for the full license text.
+
+The release management tools in [`xtask/`](./xtask/) are licensed under GPL-3.0-only. None of its code is linked into afsr's executable. Please see [`LICENSE.xtask`](./LICENSE.xtask) for the full license text.

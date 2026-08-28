@@ -1154,3 +1154,13 @@ dependencies = [
  "libc",
  "rustix",
 ]
+
+[[package]]
+name = "xtask"
+version = "1.0.4"
+dependencies = [
+ "anyhow",
+ "clap",
+ "regex",
+ "toml_edit",
+]

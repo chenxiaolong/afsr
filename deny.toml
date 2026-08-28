@@ -8,7 +8,7 @@ include-dev = true
 allow = [
     "Apache-2.0 WITH LLVM-exception",
     "BSD-3-Clause",
-    "GPL-2.0",
+    "GPL-2.0-or-later",
     "ISC",
     "MIT",
     "Unicode-3.0",
