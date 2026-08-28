@@ -1,5 +1,7 @@
 ### Unreleased
 
+* Add support for erofs filesystems ([Issue #14], [PR #24])
+  * **NOTE**: There is a breaking change to the `fs_metadata.toml` file format. The `[entries]` section is the same as before, but other top level keys have been moved to a filesystem-specific `[metadata]` section.
 * Update dependencies ([PR #22])
 * Remove support for using the system e2fsprogs library on Linux ([PR #23])
   * All platforms will now use Android's fork of e2fsprogs.
@@ -31,6 +33,7 @@
 [Issue #2]: https://github.com/chenxiaolong/afsr/issues/2
 [Issue #7]: https://github.com/chenxiaolong/afsr/issues/7
 [Issue #13]: https://github.com/chenxiaolong/afsr/issues/13
+[Issue #14]: https://github.com/chenxiaolong/afsr/issues/14
 [PR #5]: https://github.com/chenxiaolong/afsr/pull/5
 [PR #6]: https://github.com/chenxiaolong/afsr/pull/6
 [PR #8]: https://github.com/chenxiaolong/afsr/pull/8
@@ -42,3 +45,4 @@
 [PR #21]: https://github.com/chenxiaolong/afsr/pull/21
 [PR #22]: https://github.com/chenxiaolong/afsr/pull/22
 [PR #23]: https://github.com/chenxiaolong/afsr/pull/23
+[PR #24]: https://github.com/chenxiaolong/afsr/pull/24
