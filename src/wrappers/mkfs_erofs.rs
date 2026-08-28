@@ -21,7 +21,7 @@ pub fn mkfs_erofs_main(cli: MkfsErofsCli) -> Result<ExitCode> {
     Ok(ExitCode::from(ret.try_into().unwrap_or(u8::MAX)))
 }
 
-/// Run builtin mkfs.erofs.
+/// (Internal bundled mkfs.erofs command)
 #[derive(Debug, Parser)]
 #[command(disable_help_flag = true)]
 pub struct MkfsErofsCli {

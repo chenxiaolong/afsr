@@ -205,6 +205,42 @@ symlink_target = "bar"
 "security.selinux" = 'u:object_r:rootfs:s0\0'
 ```
 
+## Tab completion
+
+Tab completion configs can be generated from afsr itself.
+
+#### bash
+
+Add to `~/.bashrc`:
+
+```bash
+eval "$(afsr completion -s bash)"
+```
+
+#### zsh
+
+Add to `~/.zshrc`:
+
+```bash
+eval "$(afsr completion -s zsh)"
+```
+
+#### fish
+
+Add to `~/.config/fish/config.fish`:
+
+```bash
+afsr completion -s fish | source
+```
+
+#### PowerShell
+
+Add to PowerShell's `profile.ps1` startup script:
+
+```powershell
+Invoke-Expression (& afsr completion -s powershell)
+```
+
 ## Comparison with AOSP's tools for ext filesystems
 
 AOSP includes a set of tools for unpacking and packing ext images similar to afsr:

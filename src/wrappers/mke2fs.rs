@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 Andrew Gunnerson
+// SPDX-FileCopyrightText: 2024-2026 Andrew Gunnerson
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 use std::{ffi::OsString, process::ExitCode};
@@ -21,7 +21,7 @@ pub fn mke2fs_main(cli: Mke2fsCli) -> Result<ExitCode> {
     Ok(ExitCode::from(ret.try_into().unwrap_or(u8::MAX)))
 }
 
-/// Run builtin mke2fs.
+/// (Internal bundled mke2fs command)
 #[derive(Debug, Parser)]
 #[command(disable_help_flag = true)]
 pub struct Mke2fsCli {
