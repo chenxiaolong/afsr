@@ -264,6 +264,14 @@ Note that while AOSP's tools and afsr both build reproducible images, the output
 
 To verify the digital signatures of the downloads, follow [the steps here](https://github.com/chenxiaolong/chenxiaolong/blob/master/VERIFY_SSH_SIGNATURES.md).
 
+## Contributing
+
+([AI policy](https://github.com/chenxiaolong/chenxiaolong/blob/master/AI_POLICY.md))
+
+Bug fix pull requests are welcome and much appreciated!
+
+If you are interested in implementing a new feature and would like to see it included in afsr, please open an issue to discuss it first.
+
 ## License
 
 afsr's own code is licensed under GPL-2.0-or-later. However, because it links e2fsprogs code, some of which is GPL-2.0-only, any compiled binary is effectively distributed under GPL-2.0-only. Please see [`LICENSE`](./LICENSE) for the full license text.
