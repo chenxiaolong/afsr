@@ -7,6 +7,10 @@
     to update the actual links at the bottom of the file.
 -->
 
+### Unreleased
+
+* Update dependencies ([PR #27])
+
 ### Version 2.0.0
 
 * Add support for erofs filesystems ([Issue #14], [PR #24])
@@ -58,3 +62,4 @@
 [PR #23]: https://github.com/chenxiaolong/afsr/pull/23
 [PR #24]: https://github.com/chenxiaolong/afsr/pull/24
 [PR #26]: https://github.com/chenxiaolong/afsr/pull/26
+[PR #27]: https://github.com/chenxiaolong/afsr/pull/27
