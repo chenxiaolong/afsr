@@ -12,10 +12,10 @@ use anyhow::{Context, Result, anyhow, bail};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use bstr::ByteSlice;
 use cap_std::{ambient_authority, fs::Dir};
-use clap::{ArgAction, Parser};
 use tar::{EntryType, Header, HeaderMode};
 use tempfile::NamedTempFile;
 use uuid::Uuid;
+use winnow_args::Args;
 
 use crate::{
     ext::ExtFilesystem,
@@ -712,23 +712,18 @@ pub fn pack_main(cli: PackCli) -> Result<()> {
 }
 
 /// Pack filesystem image.
-#[derive(Debug, Parser)]
+#[derive(Debug, Args)]
 pub struct PackCli {
     /// Input metadata file.
-    #[arg(
-        long,
-        value_parser,
-        value_name = "FILE",
-        default_value = "fs_metadata.toml"
-    )]
+    #[arg(long, value_name = "FILE", default = "fs_metadata.toml")]
     input_metadata: PathBuf,
 
     /// Input tree directory.
-    #[arg(long, value_parser, value_name = "DIR", default_value = "fs_tree")]
+    #[arg(long, value_name = "DIR", default = "fs_tree")]
     input_tree: PathBuf,
 
     /// Output filesystem image.
-    #[arg(short, long, value_parser, value_name = "FILE")]
+    #[arg(short, long, value_name = "FILE")]
     output: PathBuf,
 
     /// Verbose output.
@@ -736,6 +731,6 @@ pub struct PackCli {
     /// When specified once, the mke2fs commands and various statistics will be
     /// printed out. When specified twice, the path of each entry is printed out
     /// as it is being packed.
-    #[arg(short, long, action = ArgAction::Count)]
+    #[arg(short, long, count)]
     verbose: u8,
 }
