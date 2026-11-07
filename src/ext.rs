@@ -1287,6 +1287,7 @@ impl ExtMetadata {
     // letter is a hex digit (4 bits). The old ext encoding only uses the lower
     // 2 bytes, while the new ext encoding uses all 4 bytes.
 
+    #[allow(clippy::needless_late_init)]
     pub fn device(&self) -> Option<(u32, u32)> {
         let (LinuxFileType::BlockDevice | LinuxFileType::CharDevice) = self.file_type() else {
             return None;
