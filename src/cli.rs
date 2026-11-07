@@ -1,11 +1,10 @@
 // SPDX-FileCopyrightText: 2024-2026 Andrew Gunnerson
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-use std::{io, process::ExitCode};
+use std::{env, process::ExitCode};
 
 use anyhow::Result;
-use clap::{CommandFactory, Parser, Subcommand};
-use clap_complete::Shell;
+use winnow_args::{Args, Subcommand, complete::Shell};
 
 use crate::{
     pack, unpack,
@@ -13,21 +12,16 @@ use crate::{
 };
 
 fn completion_main(cli: CompletionCli) -> Result<()> {
-    clap_complete::generate(
-        cli.shell,
-        &mut Cli::command(),
-        env!("CARGO_PKG_NAME"),
-        &mut io::stdout(),
-    );
+    print!("{}", Cli::completion_script(cli.shell));
 
     Ok(())
 }
 
 /// Generate shell tab completion configs.
-#[derive(Debug, Parser)]
+#[derive(Debug, Args)]
 pub struct CompletionCli {
     /// The shell to generate completions for.
-    #[arg(short, long, value_name = "SHELL", value_parser)]
+    #[arg(short, long, value_name = "SHELL")]
     shell: Shell,
 }
 
@@ -36,20 +30,27 @@ pub enum Command {
     Completion(CompletionCli),
     Pack(pack::PackCli),
     Unpack(unpack::UnpackCli),
-    #[command(hide = true)]
+    #[arg(hide)]
     Mke2fs(mke2fs::Mke2fsCli),
-    #[command(hide = true, name = "mkfs.erofs")]
+    #[arg(hide, name = "mkfs.erofs")]
     MkfsErofs(mkfs_erofs::MkfsErofsCli),
 }
 
-#[derive(Debug, Parser)]
-#[command(version)]
+#[derive(Debug, Args)]
+#[arg(name = "afsr", version)]
 pub struct Cli {
-    #[command(subcommand)]
+    #[arg(subcommand)]
     pub command: Command,
 }
 
 pub fn main() -> Result<ExitCode> {
+    let args = env::args_os().skip(1).collect::<Vec<_>>();
+
+    if let Some(answer) = Cli::completion_request(&args) {
+        print!("{answer}");
+        return Ok(ExitCode::SUCCESS);
+    }
+
     let cli = Cli::parse();
 
     match cli.command {

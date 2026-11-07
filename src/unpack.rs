@@ -12,7 +12,7 @@ use std::{
 use anyhow::{Context, Result, bail};
 use bstr::{BStr, BString, ByteSlice, ByteVec};
 use cap_std::{ambient_authority, fs::Dir};
-use clap::{ArgAction, Parser};
+use winnow_args::Args;
 
 use crate::{
     bindings::{
@@ -482,23 +482,18 @@ pub fn unpack_main(cli: UnpackCli) -> Result<()> {
 }
 
 /// Unpack filesystem image.
-#[derive(Debug, Parser)]
+#[derive(Debug, Args)]
 pub struct UnpackCli {
     /// Input filesystem image.
-    #[arg(short, long, value_parser, value_name = "FILE")]
+    #[arg(short, long, value_name = "FILE")]
     input: PathBuf,
 
     /// Output metadata file.
-    #[arg(
-        long,
-        value_parser,
-        value_name = "FILE",
-        default_value = "fs_metadata.toml"
-    )]
+    #[arg(long, value_name = "FILE", default = "fs_metadata.toml")]
     output_metadata: PathBuf,
 
     /// Output tree directory.
-    #[arg(long, value_parser, value_name = "DIR", default_value = "fs_tree")]
+    #[arg(long, value_name = "DIR", default = "fs_tree")]
     output_tree: PathBuf,
 
     /// Use a flat output directory structure.
@@ -513,6 +508,6 @@ pub struct UnpackCli {
     /// When specified once, information about the filesystem will be printed
     /// out. When specified twice, the path of each entry is printed out as it
     /// is being unpacked.
-    #[arg(short, long, action = ArgAction::Count)]
+    #[arg(short, long, count)]
     verbose: u8,
 }

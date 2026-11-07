@@ -4,7 +4,7 @@
 use std::{ffi::OsString, process::ExitCode};
 
 use anyhow::Result;
-use clap::Parser;
+use winnow_args::Args;
 
 use crate::{bindings::erofs, wrappers::Argv};
 
@@ -22,10 +22,15 @@ pub fn mkfs_erofs_main(cli: MkfsErofsCli) -> Result<ExitCode> {
 }
 
 /// (Internal bundled mkfs.erofs command)
-#[derive(Debug, Parser)]
-#[command(disable_help_flag = true)]
+#[derive(Debug, Args)]
+#[arg(
+    disable_help_flag,
+    disable_version_flag,
+    disable_help_subcommand,
+    unknown_flags = "value"
+)]
 pub struct MkfsErofsCli {
     /// mkfs.erofs args.
-    #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+    #[arg(positional, double_dash = "preserve", stop_flags)]
     command: Vec<OsString>,
 }
