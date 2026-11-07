@@ -9,6 +9,8 @@
 
 ### Unreleased
 
+* Switch from clap to winnow-args for command line argument parsing ([PR #28])
+  * Reduces executable size by 3% to 16%, depending on platform.
 * Update dependencies ([PR #27])
 
 ### Version 2.0.0
@@ -63,3 +65,4 @@
 [PR #24]: https://github.com/chenxiaolong/afsr/pull/24
 [PR #26]: https://github.com/chenxiaolong/afsr/pull/26
 [PR #27]: https://github.com/chenxiaolong/afsr/pull/27
+[PR #28]: https://github.com/chenxiaolong/afsr/pull/28
