@@ -7,7 +7,7 @@
     to update the actual links at the bottom of the file.
 -->
 
-### Unreleased
+### Version 2.1.1
 
 * Fix support for older x86_64 CPUs that don't support AVX instructions in the prebuilt binaries ([PR #30])
   * This affected version 2.1.0, which was built after Github Actions upgraded `ubuntu-latest` to Ubuntu 26.04.
