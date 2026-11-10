@@ -7,6 +7,11 @@
     to update the actual links at the bottom of the file.
 -->
 
+### Unreleased
+
+* Fix support for older x86_64 CPUs that don't support AVX instructions in the prebuilt binaries ([PR #30])
+  * This affected version 2.1.0, which was built after Github Actions upgraded `ubuntu-latest` to Ubuntu 26.04.
+
 ### Version 2.1.0
 
 * Switch from clap to winnow-args for command line argument parsing ([PR #28])
@@ -67,3 +72,4 @@
 [PR #27]: https://github.com/chenxiaolong/afsr/pull/27
 [PR #28]: https://github.com/chenxiaolong/afsr/pull/28
 [PR #29]: https://github.com/chenxiaolong/afsr/pull/29
+[PR #30]: https://github.com/chenxiaolong/afsr/pull/30
