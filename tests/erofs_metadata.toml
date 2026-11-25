@@ -1,0 +1,85 @@
+[metadata]
+type = "erofs"
+features = [
+    "sb_csum",
+    "mtime",
+    "xattr_filter",
+]
+block_size = 4096
+uuid = "ed034a1e-c176-594d-abd0-284c3c1b4e7a"
+creation_time = "2009-01-01T00:00:00Z"
+
+[[entries]]
+path = "/"
+file_type = "Directory"
+file_mode = "755"
+mtime = "2009-01-01T00:00:00Z"
+
+[entries.xattrs]
+"security.selinux" = "u:r:root:s0"
+
+[[entries]]
+path = "/dev"
+file_type = "Directory"
+file_mode = "755"
+mtime = "2009-01-01T00:00:00Z"
+
+[entries.xattrs]
+"security.selinux" = "u:r:dev:s0"
+
+[[entries]]
+path = "/dev/char"
+file_type = "CharDevice"
+file_mode = "644"
+mtime = "2009-01-01T00:00:00Z"
+# Linux supports up to 12 bits, but macOS only supports up to 8 bits. mkfs.erofs
+# silently discards the truncated bits.
+device_major = 0xff
+device_minor = 0xfffff
+
+[entries.xattrs]
+"security.selinux" = "u:r:char:s0"
+
+[[entries]]
+path = "/dev/block"
+file_type = "BlockDevice"
+file_mode = "644"
+mtime = "2009-01-01T00:00:00Z"
+# Linux supports up to 12 bits, but macOS only supports up to 8 bits. mkfs.erofs
+# silently discards the truncated bits.
+device_major = 0xff
+device_minor = 0xfffff
+
+[entries.xattrs]
+"security.selinux" = "u:r:block:s0"
+
+[[entries]]
+path = "/regular"
+file_type = "RegularFile"
+file_mode = "644"
+mtime = "2009-01-01T00:00:00Z"
+
+[entries.xattrs]
+"security.selinux" = "u:r:regular:s0"
+
+[[entries]]
+path = "/fifo"
+file_type = "Fifo"
+file_mode = "644"
+mtime = "2009-01-01T00:00:00Z"
+
+[entries.xattrs]
+"security.selinux" = "u:r:fifo:s0"
+
+[[entries]]
+path = "/symlink"
+file_type = "Symlink"
+file_mode = "644"
+mtime = "2009-01-01T00:00:00Z"
+symlink_target = "/dev"
+
+[entries.xattrs]
+"security.selinux" = "u:r:symlink:s0"
+
+# Named sockets are not included here since it's not supported by the tar
+# intermediate representation.

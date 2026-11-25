@@ -3,4 +3,5 @@
 #include "erofs/inode.h"
 #include "erofs/internal.h"
 
-#include "mkfs_erofs_wrapper.h"
+#include "lib/sysmacros_wrapper.h"
+#include "mkfs/mkfs_erofs_wrapper.h"

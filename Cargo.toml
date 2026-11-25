@@ -22,7 +22,7 @@ anyhow = "1.0.79"
 base64 = "0.23.1"
 bstr = "1.9.1"
 cap-std = "4.0.3"
-jiff = { version = "0.2.1", features = ["serde", "std"], default-features = false }
+jiff = { version = "1.0.0", features = ["serde", "std"], default-features = false }
 libc = "0.2.189"
 num-traits = "0.2.19"
 serde = { version = "1.0.203", features = ["derive"] }

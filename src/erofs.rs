@@ -33,11 +33,11 @@ use crate::{
         EROFS_FEATURE_INCOMPAT_COMPR_HEAD2, EROFS_FEATURE_INCOMPAT_DEDUPE,
         EROFS_FEATURE_INCOMPAT_DEVICE_TABLE, EROFS_FEATURE_INCOMPAT_FRAGMENTS,
         EROFS_FEATURE_INCOMPAT_LZ4_0PADDING, EROFS_FEATURE_INCOMPAT_METABOX,
-        EROFS_FEATURE_INCOMPAT_XATTR_PREFIXES, EROFS_FEATURE_INCOMPAT_ZTAILPACKING, LINUX_S_IFBLK,
-        LINUX_S_IFCHR, LINUX_S_IFDIR, LINUX_S_IFIFO, LINUX_S_IFLNK, LINUX_S_IFMT, LINUX_S_IFREG,
-        LINUX_S_IFSOCK, erofs_dev_close, erofs_dev_open, erofs_dir_context, erofs_exit_configure,
-        erofs_ftype_to_mode, erofs_getxattr, erofs_init_configure, erofs_inode, erofs_io_pread,
-        erofs_iopen, erofs_iterate_dir, erofs_listxattr, erofs_nid_t, erofs_put_super,
+        EROFS_FEATURE_INCOMPAT_XATTR_PREFIXES, EROFS_FEATURE_INCOMPAT_ZTAILPACKING, S_IFBLK,
+        S_IFCHR, S_IFDIR, S_IFIFO, S_IFLNK, S_IFMT, S_IFREG, S_IFSOCK, dev_t, erofs_dev_close,
+        erofs_dev_open, erofs_dir_context, erofs_exit_configure, erofs_ftype_to_mode,
+        erofs_getxattr, erofs_init_configure, erofs_inode, erofs_io_pread, erofs_iopen,
+        erofs_iterate_dir, erofs_listxattr, erofs_nid_t, erofs_put_super,
         erofs_read_inode_from_disk, erofs_read_superblock, erofs_vfile, g_sbi, linux_major,
         linux_minor,
     },
@@ -530,7 +530,7 @@ impl<'a> ErofsMetadata<'a> {
     }
 
     pub fn perms(&self) -> u16 {
-        self.inode.i_mode & !LINUX_S_IFMT as u16
+        self.inode.i_mode & !S_IFMT as u16
     }
 
     pub fn size(&self) -> u64 {
@@ -563,9 +563,10 @@ impl<'a> ErofsMetadata<'a> {
         };
 
         unsafe {
+            // as dev_t because it is signed on macOS.
             Some((
-                linux_major(self.inode.u.i_rdev.into()),
-                linux_minor(self.inode.u.i_rdev.into()),
+                linux_major(self.inode.u.i_rdev as dev_t),
+                linux_minor(self.inode.u.i_rdev as dev_t),
             ))
         }
     }
@@ -592,14 +593,14 @@ trait LinuxFileTypeErofs {
 
 impl LinuxFileTypeErofs for LinuxFileType {
     fn from_raw_linux(value: u16) -> Self {
-        match u32::from(value) & LINUX_S_IFMT {
-            LINUX_S_IFREG => Self::RegularFile,
-            LINUX_S_IFDIR => Self::Directory,
-            LINUX_S_IFCHR => Self::CharDevice,
-            LINUX_S_IFBLK => Self::BlockDevice,
-            LINUX_S_IFIFO => Self::Fifo,
-            LINUX_S_IFSOCK => Self::Socket,
-            LINUX_S_IFLNK => Self::Symlink,
+        match u32::from(value) & S_IFMT {
+            S_IFREG => Self::RegularFile,
+            S_IFDIR => Self::Directory,
+            S_IFCHR => Self::CharDevice,
+            S_IFBLK => Self::BlockDevice,
+            S_IFIFO => Self::Fifo,
+            S_IFSOCK => Self::Socket,
+            S_IFLNK => Self::Symlink,
             v => Self::Unknown((v >> 12) as u8),
         }
     }

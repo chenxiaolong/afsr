@@ -264,6 +264,11 @@ fn build_e2fs(target: &Target) {
         builder.flag("-Wno-stringop-overread");
     }
 
+    if target.os == "android" {
+        // [clang] strtok() calls in lib/e2p/encoding.c.
+        builder.flag("-Wno-deprecated-declarations");
+    }
+
     if target.os == "windows" {
         if target.triple.ends_with("-gnullvm") {
             // [clang] `lineno` variable in blkid_read_cache().
@@ -405,6 +410,20 @@ fn definitions_erofs(target: &Target, version: &str) -> Vec<String> {
         flags.push("-DHAVE_PTHREAD_H".to_owned());
     }
 
+    // lib/xattr.c includes <sys/xattr.h> based on HAVE_SYS_XATTR_H, but uses
+    // xattr functions based on __APPLE__.
+    if target.os == "macos" {
+        // [Not in AOSP]
+        flags.push("-DHAVE_SYS_XATTR_H".to_owned());
+    }
+
+    // include/erofs/os.h conditionally includes <sys/sysmacros.h>, but
+    // unconditionally defines aliases for major, minor, and makedev.
+    if target.os == "linux" || target.os == "android" {
+        // [Not in AOSP]
+        flags.push("-DHAVE_SYS_SYSMACROS_H".to_owned());
+    }
+
     // We do this instead of generating a header file.
     flags.push(format!("-DPACKAGE_VERSION=\"{version}\""));
 
@@ -476,12 +495,13 @@ fn build_erofs(target: &Target, version: &str) {
     builder.file("external/erofs-utils/lib/global.c");
     // [Not in AOSP]
     builder.file("external/erofs-utils/lib/gzran.c");
-    builder.file("external/erofs-utils/lib/hashmap.c");
     // [Not in AOSP]
     builder.file("external/erofs-utils/lib/importer.c");
     builder.file("external/erofs-utils/lib/inode.c");
     builder.file("external/erofs-utils/lib/io.c");
     builder.file("external/erofs-utils/lib/kite_deflate.c");
+    // [Not in AOSP]
+    builder.file("external/erofs-utils/lib/manifest.c");
     // [Not in AOSP]
     builder.file("external/erofs-utils/lib/metabox.c");
     builder.file("external/erofs-utils/lib/namei.c");
@@ -493,15 +513,26 @@ fn build_erofs(target: &Target, version: &str) {
     builder.file("external/erofs-utils/lib/uuid_unparse.c");
     // [Not in AOSP]
     builder.file("external/erofs-utils/lib/vmdk.c");
+    if target.os == "windows" {
+        // [Not in AOSP]
+        builder.file("external/erofs-utils/lib/windows_compat.c");
+    }
     builder.file("external/erofs-utils/lib/workqueue.c");
     builder.file("external/erofs-utils/lib/xattr.c");
     builder.file("external/erofs-utils/lib/xxhash.c");
     builder.file("external/erofs-utils/lib/zmap.c");
 
+    builder.file("external/erofs-utils-wrappers/lib/sysmacros_wrapper.c");
+
     // builder.file("external/erofs-utils/mkfs/main.c");
     builder.file("external/erofs-utils-wrappers/mkfs/mkfs_erofs_wrapper.c");
 
-    builder.file("external/erofs-utils/lib/linux_compat.c");
+    if target.os == "android" {
+        // [clang] strtok() calls in lib/compress_hints.c.
+        builder.flag("-Wno-deprecated-declarations");
+        // [clang] Missing field initializer for `prefix_len` in xattr_types[0].
+        builder.flag("-Wno-missing-field-initializers");
+    }
 
     if target.os == "windows" && !target.triple.ends_with("-gnullvm") {
         // [GCC] Compiler does not understand that erofs_mkfs_strtoull()
@@ -523,15 +554,16 @@ fn bind_erofs(target: &Target, version: &str, out_dir: &Path) {
 
     let bindings = builder
         .header("wrapper_erofs.h")
-        .clang_arg("-Iexternal/erofs-utils-wrappers/mkfs")
+        .clang_arg("-Iexternal/erofs-utils-wrappers")
         .clang_arg("-Iexternal/erofs-utils/include")
         .clang_arg(format!("--target={}", target.bindgen_triple()))
         .allowlist_function("erofs_.*")
         .allowlist_function("linux_.*")
         .allowlist_function("mkfs_erofs_main")
+        .allowlist_type("dev_t")
         .allowlist_type("erofs_.*")
         .allowlist_var("EROFS_.*")
-        .allowlist_var("LINUX_S_.*")
+        .allowlist_var("S_IF.*")
         .allowlist_var("g_sbi")
         .wrap_unsafe_ops(true)
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))

@@ -57,6 +57,13 @@ jobs:
           sudo apt-get -y update
           sudo apt-get -y install --reinstall libc6-dev
 
+      - name: Install qemu-user-binfmt
+        if: ${{ contains(matrix.artifact.name, 'android') }}
+        shell: bash
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install qemu-user-binfmt
+
       - name: Update Rust
         run: rustup update stable
 
@@ -114,6 +121,14 @@ jobs:
               cargo android \
                   build --release \
                   --target "${target}"
+          done
+
+      - name: Roundtrip tests
+        shell: bash
+        run: |
+          for target in ${TARGETS}; do
+              python3 tests/roundtrip.py \
+                  target/${target}/release/afsr
           done
 
       - name: Create output directory

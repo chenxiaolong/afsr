@@ -3,7 +3,7 @@
 	url = https://android.googlesource.com/platform/external/e2fsprogs
 [submodule "external/erofs-utils"]
 	path = external/erofs-utils
-	url = https://github.com/chenxiaolong/erofs-utils.git
+	url = https://github.com/erofs/erofs-utils.git
 [submodule "external/lz4"]
 	path = external/lz4
 	url = https://android.googlesource.com/platform/external/lz4
