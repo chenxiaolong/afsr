@@ -10,6 +10,7 @@
 ### Unreleased
 
 * Update erofs-utils to upstream commit 7e52cbffa83fbe9eb10bbf110cb12d503a048081 for official Windows support ([PR #31])
+* Update lz4 to upstream version 1.11.1 and stop using AOSP's outdated fork ([PR #32])
 
 ### Version 2.1.1
 
@@ -78,3 +79,4 @@
 [PR #29]: https://github.com/chenxiaolong/afsr/pull/29
 [PR #30]: https://github.com/chenxiaolong/afsr/pull/30
 [PR #31]: https://github.com/chenxiaolong/afsr/pull/31
+[PR #32]: https://github.com/chenxiaolong/afsr/pull/32
