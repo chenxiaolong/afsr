@@ -7,6 +7,10 @@
     to update the actual links at the bottom of the file.
 -->
 
+### Unreleased
+
+* Update erofs-utils to upstream commit 7e52cbffa83fbe9eb10bbf110cb12d503a048081 for official Windows support ([PR #31])
+
 ### Version 2.1.1
 
 * Fix support for older x86_64 CPUs that don't support AVX instructions in the prebuilt binaries ([PR #30])
@@ -73,3 +77,4 @@
 [PR #28]: https://github.com/chenxiaolong/afsr/pull/28
 [PR #29]: https://github.com/chenxiaolong/afsr/pull/29
 [PR #30]: https://github.com/chenxiaolong/afsr/pull/30
+[PR #31]: https://github.com/chenxiaolong/afsr/pull/31
