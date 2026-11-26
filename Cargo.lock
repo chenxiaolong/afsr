@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "afsr"
-version = "2.1.1"
+version = "2.2.0"
 dependencies = [
  "anyhow",
  "base64",
@@ -982,7 +982,7 @@ dependencies = [
 
 [[package]]
 name = "xtask"
-version = "2.1.1"
+version = "2.2.0"
 dependencies = [
  "anyhow",
  "regex",

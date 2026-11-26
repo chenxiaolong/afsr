@@ -7,7 +7,7 @@
     to update the actual links at the bottom of the file.
 -->
 
-### Unreleased
+### Version 2.2.0
 
 * Update erofs-utils to upstream commit 7e52cbffa83fbe9eb10bbf110cb12d503a048081 for official Windows support ([PR #31])
 * Update lz4 to upstream version 1.11.1 and stop using AOSP's outdated fork ([PR #32])
