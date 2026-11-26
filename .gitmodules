@@ -6,4 +6,4 @@
 	url = https://github.com/erofs/erofs-utils.git
 [submodule "external/lz4"]
 	path = external/lz4
-	url = https://android.googlesource.com/platform/external/lz4
+	url = https://github.com/lz4/lz4.git
